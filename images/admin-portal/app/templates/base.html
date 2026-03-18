@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wormhole VPN</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div>
+            <h1>Wormhole VPN</h1>
+            <p>Small-scale VPN account and device management</p>
+        </div>
+        {% if current_admin %}
+        <form method="post" action="/logout">
+            <button type="submit" class="secondary">Log out {{ current_admin }}</button>
+        </form>
+        {% endif %}
+    </header>
+    <main class="container">
+        {% if flash %}
+        <div class="flash flash-{{ flash.level }}">{{ flash.text }}</div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
+

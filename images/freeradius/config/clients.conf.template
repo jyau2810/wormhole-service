@@ -1,0 +1,18 @@
+client ocserv {
+    ipaddr = ocserv
+    secret = ${RADIUS_SHARED_SECRET}
+    shortname = ocserv
+    nastype = other
+    require_message_authenticator = no
+}
+
+client localhost-ipv4 {
+    ipaddr = 127.0.0.1
+    secret = ${RADIUS_SHARED_SECRET}
+}
+
+client localhost-ipv6 {
+    ipv6addr = ::1
+    secret = ${RADIUS_SHARED_SECRET}
+}
+

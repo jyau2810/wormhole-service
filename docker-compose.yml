@@ -1,0 +1,190 @@
+name: wormhole-vpn
+
+services:
+  db:
+    build:
+      context: ./images/mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      TZ: ${APP_TIMEZONE}
+      LOG_DIR_ROOT: ${LOG_DIR_ROOT}
+      MYSQL_GENERAL_LOG: ${MYSQL_GENERAL_LOG}
+      MYSQL_SLOW_LOG_THRESHOLD_MS: ${MYSQL_SLOW_LOG_THRESHOLD_MS}
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./bootstrap/db:/docker-entrypoint-initdb.d:ro
+      - ./var/log:${LOG_DIR_ROOT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mariadb-admin ping -h 127.0.0.1 -uroot -p$${MARIADB_ROOT_PASSWORD} --silent",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  ca-api:
+    build:
+      context: ./images/ca-api
+    restart: unless-stopped
+    environment:
+      APP_TIMEZONE: ${APP_TIMEZONE}
+      CA_API_TOKEN: ${CA_API_TOKEN}
+      CA_DATA_DIR: /data
+      CA_COMMON_NAME: ${CA_COMMON_NAME}
+      CA_ORGANIZATION: ${CA_ORGANIZATION}
+      CA_VALIDITY_DAYS: ${CA_VALIDITY_DAYS}
+      CLIENT_CERT_VALIDITY_DAYS: ${CLIENT_CERT_VALIDITY_DAYS}
+      SERVER_CERT_VALIDITY_DAYS: ${SERVER_CERT_VALIDITY_DAYS}
+      VPN_SERVER_HOST: ${VPN_SERVER_HOST}
+      VPN_SERVER_ALT_NAMES: ${VPN_SERVER_ALT_NAMES}
+      P12_EXPORT_PASSWORD: ${P12_EXPORT_PASSWORD}
+      INTERNAL_API_BIND_PORT: ${INTERNAL_API_BIND_PORT}
+      LOG_LEVEL: ${LOG_LEVEL}
+      LOG_DIR_ROOT: ${LOG_DIR_ROOT}
+    volumes:
+      - ca-data:/data
+      - ./var/log:${LOG_DIR_ROOT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:${INTERNAL_API_BIND_PORT}/healthz', timeout=3)\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  freeradius:
+    build:
+      context: ./images/freeradius
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_TIMEZONE: ${APP_TIMEZONE}
+      RADIUS_DB_HOST: db
+      RADIUS_DB_PORT: ${RADIUS_DB_PORT}
+      RADIUS_DB_NAME: ${RADIUS_DB_NAME}
+      RADIUS_DB_USER: ${RADIUS_DB_USER}
+      RADIUS_DB_PASSWORD: ${RADIUS_DB_PASSWORD}
+      RADIUS_SHARED_SECRET: ${RADIUS_SHARED_SECRET}
+      LOG_DIR_ROOT: ${LOG_DIR_ROOT}
+    volumes:
+      - ./var/log:${LOG_DIR_ROOT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pgrep -x freeradius >/dev/null || pgrep -x radiusd >/dev/null",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  admin-portal:
+    build:
+      context: ./images/admin-portal
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      ca-api:
+        condition: service_healthy
+    environment:
+      APP_TIMEZONE: ${APP_TIMEZONE}
+      DB_HOST: db
+      DB_PORT: ${RADIUS_DB_PORT}
+      DB_NAME: ${RADIUS_DB_NAME}
+      DB_USER: ${RADIUS_DB_USER}
+      DB_PASSWORD: ${RADIUS_DB_PASSWORD}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
+      ADMIN_BIND_PORT: ${ADMIN_BIND_PORT}
+      CA_API_URL: http://ca-api:${INTERNAL_API_BIND_PORT}
+      CA_API_TOKEN: ${CA_API_TOKEN}
+      P12_EXPORT_PASSWORD: ${P12_EXPORT_PASSWORD}
+      LOG_LEVEL: ${LOG_LEVEL}
+      LOG_DIR_ROOT: ${LOG_DIR_ROOT}
+    ports:
+      - "127.0.0.1:${ADMIN_PORTAL_PORT}:${ADMIN_BIND_PORT}"
+    volumes:
+      - ./var/log:${LOG_DIR_ROOT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:${ADMIN_BIND_PORT}/healthz', timeout=3)\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  ocserv:
+    build:
+      context: ./images/ocserv
+    restart: unless-stopped
+    depends_on:
+      ca-api:
+        condition: service_healthy
+      freeradius:
+        condition: service_healthy
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      APP_TIMEZONE: ${APP_TIMEZONE}
+      VPN_SERVER_HOST: ${VPN_SERVER_HOST}
+      VPN_TCP_PORT: ${VPN_TCP_PORT}
+      VPN_UDP_PORT: ${VPN_UDP_PORT}
+      VPN_NETWORK: ${VPN_NETWORK}
+      VPN_NETMASK: ${VPN_NETMASK}
+      VPN_MAX_CLIENTS: ${VPN_MAX_CLIENTS}
+      VPN_DNS_1: ${VPN_DNS_1}
+      VPN_DNS_2: ${VPN_DNS_2}
+      VPN_IDLE_TIMEOUT: ${VPN_IDLE_TIMEOUT}
+      VPN_MOBILE_IDLE_TIMEOUT: ${VPN_MOBILE_IDLE_TIMEOUT}
+      VPN_SESSION_TIMEOUT: ${VPN_SESSION_TIMEOUT}
+      VPN_STATS_REPORT_TIME: ${VPN_STATS_REPORT_TIME}
+      VPN_DEFAULT_DOMAIN: ${VPN_DEFAULT_DOMAIN}
+      RADIUS_SHARED_SECRET: ${RADIUS_SHARED_SECRET}
+      OCSERV_NAT_DEVICE: ${OCSERV_NAT_DEVICE}
+      LOG_DIR_ROOT: ${LOG_DIR_ROOT}
+    volumes:
+      - ca-data:/srv/pki:ro
+      - ./var/log:${LOG_DIR_ROOT}
+    ports:
+      - "${VPN_TCP_PORT}:${VPN_TCP_PORT}/tcp"
+      - "${VPN_UDP_PORT}:${VPN_UDP_PORT}/udp"
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -x ocserv >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  logrotate:
+    build:
+      context: ./images/logrotate
+    restart: unless-stopped
+    environment:
+      LOG_DIR_ROOT: ${LOG_DIR_ROOT}
+      LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS}
+    volumes:
+      - ./var/log:${LOG_DIR_ROOT}
+
+volumes:
+  db-data:
+  ca-data:

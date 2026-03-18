@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel">
+    <h2>Create Account</h2>
+    <form method="post" action="/accounts" class="grid-form">
+        <label>
+            Username
+            <input type="text" name="username" required>
+        </label>
+        <label>
+            VPN Password
+            <input type="text" name="password" required>
+        </label>
+        <label>
+            Expiration Date
+            <input type="date" name="expiration_date" required value="{{ today }}">
+        </label>
+        <button type="submit">Create</button>
+    </form>
+</section>
+
+<section class="panel">
+    <h2>Accounts</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Status</th>
+                <th>Expires</th>
+                <th>Bound Devices</th>
+                <th>Active Sessions</th>
+                <th>Last Success</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for account in accounts %}
+            <tr>
+                <td>{{ account.username }}</td>
+                <td>{{ account.status }}</td>
+                <td>{{ account.expiration_at|datetime_local }}</td>
+                <td>{{ account.active_devices }}/{{ account.max_device_slots }}</td>
+                <td>{{ account.active_sessions }}</td>
+                <td>{{ account.last_success_at|datetime_local }}</td>
+                <td><a href="/accounts/{{ account.id }}">Manage</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}
+

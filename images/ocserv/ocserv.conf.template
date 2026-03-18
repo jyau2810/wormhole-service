@@ -1,0 +1,48 @@
+auth = "certificate"
+auth = "radius[config=/etc/radcli/radiusclient.conf,groupconfig=false]"
+acct = "radius[config=/etc/radcli/radiusclient.conf]"
+
+tcp-port = __VPN_TCP_PORT__
+udp-port = __VPN_UDP_PORT__
+socket-file = /var/run/occtl.socket
+use-occtl = true
+
+run-as-user = nobody
+run-as-group = daemon
+device = vpns
+pid-file = /var/run/ocserv.pid
+
+server-cert = /srv/pki/server/server-cert.pem
+server-key = /srv/pki/server/server-key.pem
+ca-cert = /srv/pki/ca/ca-cert.pem
+crl = /srv/pki/ca/crl.pem
+cert-user-oid = 0.9.2342.19200300.100.1.1
+
+isolate-workers = false
+max-clients = __VPN_MAX_CLIENTS__
+max-same-clients = 2
+keepalive = 32400
+dpd = 90
+mobile-dpd = 1800
+switch-to-tcp-timeout = 25
+try-mtu-discovery = true
+
+auth-timeout = 240
+idle-timeout = __VPN_IDLE_TIMEOUT__
+mobile-idle-timeout = __VPN_MOBILE_IDLE_TIMEOUT__
+session-timeout = __VPN_SESSION_TIMEOUT__
+stats-report-time = __VPN_STATS_REPORT_TIME__
+
+ipv4-network = __VPN_NETWORK__
+ipv4-netmask = __VPN_NETMASK__
+tunnel-all-dns = true
+dns = __VPN_DNS_1__
+dns = __VPN_DNS_2__
+route = default
+
+default-domain = __VPN_DEFAULT_DOMAIN__
+
+cisco-client-compat = true
+compression = false
+deny-roaming = false
+

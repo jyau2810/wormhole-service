@@ -1,0 +1,13 @@
+${LOG_DIR_ROOT}/*/*.log {
+    daily
+    rotate ${LOG_RETENTION_DAYS}
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    dateext
+    dateyesterday
+    create 0644 root root
+}
+

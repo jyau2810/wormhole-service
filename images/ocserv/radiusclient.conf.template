@@ -1,0 +1,11 @@
+authserver freeradius:1812
+acctserver freeradius:1813
+servers /etc/radcli/servers
+dictionary /etc/radcli/dictionary
+radius_timeout 10
+radius_retries 3
+login_tries 4
+seqfile /var/run/radcli-seq
+login_radius /bin/true
+nologin /etc/nologin
+issue /etc/radcli/issue

@@ -1,0 +1,35 @@
+server inner-tunnel {
+    authorize {
+        filter_username
+        chap
+        mschap
+        suffix
+        files
+        sql
+        expiration
+        pap
+    }
+
+    authenticate {
+        Auth-Type PAP {
+            pap
+        }
+
+        Auth-Type CHAP {
+            chap
+        }
+
+        Auth-Type MS-CHAP {
+            mschap
+        }
+    }
+
+    session {
+        sql
+    }
+
+    post-auth {
+        sql
+    }
+}
+

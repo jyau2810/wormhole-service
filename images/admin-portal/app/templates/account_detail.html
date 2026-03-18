@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel">
+    <div class="panel-title">
+        <div>
+            <h2>{{ account.username }}</h2>
+            <p>Status: {{ account.status }} | Expires: {{ account.expiration_at|datetime_local }} | Active sessions: {{ account.active_sessions }}</p>
+        </div>
+        <a href="/accounts" class="button-link">Back</a>
+    </div>
+    <div class="actions">
+        <form method="post" action="/accounts/{{ account.id }}/toggle" class="inline-form">
+            <button type="submit">{{ "Disable" if account.status == "enabled" else "Enable" }}</button>
+        </form>
+        <form method="post" action="/accounts/{{ account.id }}/extend" class="inline-form">
+            <input type="date" name="expiration_date" required value="{{ today }}">
+            <button type="submit">Update Expiration</button>
+        </form>
+        <form method="post" action="/accounts/{{ account.id }}/password" class="inline-form">
+            <input type="text" name="password" placeholder="New VPN password" required>
+            <button type="submit">Rotate Password</button>
+        </form>
+    </div>
+</section>
+
+<section class="panel">
+    <h2>Issue Device</h2>
+    <p>Current bound devices: {{ account.active_devices }}/{{ account.max_device_slots }}. Exported PKCS#12 password: {{ p12_password_hint }}.</p>
+    <form method="post" action="/accounts/{{ account.id }}/devices" class="grid-form">
+        <label>
+            Device Label
+            <input type="text" name="device_label" required placeholder="iphone-yaoji">
+        </label>
+        <button type="submit">Issue Device Certificate</button>
+    </form>
+</section>
+
+<section class="panel">
+    <h2>Bound Devices</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Slot</th>
+                <th>Label</th>
+                <th>Status</th>
+                <th>Serial</th>
+                <th>Issued</th>
+                <th>Revoked</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for device in devices %}
+            <tr>
+                <td>{{ device.slot_no }}</td>
+                <td>{{ device.device_label }}</td>
+                <td>{{ device.cert_status }}</td>
+                <td><code>{{ device.cert_serial }}</code></td>
+                <td>{{ device.created_at|datetime_local }}</td>
+                <td>{{ device.revoked_at|datetime_local }}</td>
+                <td class="row-actions">
+                    <a href="/devices/{{ device.id }}/bundle">Download</a>
+                    {% if device.cert_status == "active" %}
+                    <form method="post" action="/devices/{{ device.id }}/revoke">
+                        <button type="submit" class="danger">Revoke</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="panel">
+    <h2>Current Sessions</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Started</th>
+                <th>Assigned IP</th>
+                <th>Calling Station</th>
+                <th>In Octets</th>
+                <th>Out Octets</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in active_sessions %}
+            <tr>
+                <td>{{ session.acctstarttime|datetime_local }}</td>
+                <td>{{ session.framedipaddress or "-" }}</td>
+                <td>{{ session.callingstationid or "-" }}</td>
+                <td>{{ session.acctinputoctets or 0 }}</td>
+                <td>{{ session.acctoutputoctets or 0 }}</td>
+            </tr>
+            {% endfor %}
+            {% if not active_sessions %}
+            <tr>
+                <td colspan="5">No active sessions.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</section>
+
+<section class="panel">
+    <h2>Recent Auth Attempts</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Result</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in auth_logs %}
+            <tr>
+                <td>{{ row.authdate|datetime_local }}</td>
+                <td>{{ row.reply }}</td>
+            </tr>
+            {% endfor %}
+            {% if not auth_logs %}
+            <tr>
+                <td colspan="2">No auth logs yet.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}
+

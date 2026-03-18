@@ -1,0 +1,14 @@
+.env
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.swo
+.DS_Store
+dist/
+build/
+htmlcov/
+var/log/**/*.log
+var/log/**/*.gz

@@ -1,0 +1,9 @@
+[mysqld]
+character-set-server=utf8mb4
+collation-server=utf8mb4_unicode_ci
+log_error=${LOG_DIR_ROOT}/mariadb/error.log
+slow_query_log=ON
+slow_query_log_file=${LOG_DIR_ROOT}/mariadb/slow.log
+long_query_time=${MYSQL_SLOW_LOG_THRESHOLD_SECONDS}
+general_log=${MYSQL_GENERAL_LOG}
+general_log_file=${LOG_DIR_ROOT}/mariadb/general.log
