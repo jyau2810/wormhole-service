@@ -1,5 +1,7 @@
 # Wormhole VPN Stack
 
+Chinese documentation is available in [README.zh-CN.md](/Users/yaoji/Documents/Workspace/wormhole-service/README.zh-CN.md).
+
 Dockerized VPN stack for small-scale account distribution with:
 
 - OpenConnect/ocserv VPN
@@ -32,6 +34,25 @@ make local-smoke
 ```
 
 See `docs/LOCAL_DEV.md` for details.
+
+## Documentation
+
+- English:
+  - `README.md`
+  - `env.md`
+  - `docs/ARCHITECTURE.md`
+  - `docs/DEPLOY.md`
+  - `docs/LOCAL_DEV.md`
+  - `docs/OPERATIONS.md`
+  - `docs/TROUBLESHOOTING.md`
+- Chinese:
+  - `README.zh-CN.md`
+  - `env.zh-CN.md`
+  - `docs/zh-CN/ARCHITECTURE.md`
+  - `docs/zh-CN/DEPLOY.md`
+  - `docs/zh-CN/LOCAL_DEV.md`
+  - `docs/zh-CN/OPERATIONS.md`
+  - `docs/zh-CN/TROUBLESHOOTING.md`
 
 ## Delivered Components
 
