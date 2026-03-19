@@ -13,8 +13,9 @@ mkdir -p "${RADIUS_ETC}/mods-enabled" "${RADIUS_ETC}/mods-config/sql/main/mysql"
 mkdir -p "${LOG_DIR_ROOT}/freeradius"
 touch "${LOG_DIR_ROOT}/freeradius/freeradius.log"
 
-envsubst < /opt/wormhole/clients.conf.template > "${RADIUS_ETC}/clients.conf"
-envsubst < /opt/wormhole/sql.template > "${RADIUS_ETC}/mods-enabled/sql"
+envsubst '${RADIUS_SHARED_SECRET}' < /opt/wormhole/clients.conf.template > "${RADIUS_ETC}/clients.conf"
+envsubst '${RADIUS_DB_HOST} ${RADIUS_DB_PORT} ${RADIUS_DB_USER} ${RADIUS_DB_PASSWORD} ${RADIUS_DB_NAME}' \
+    < /opt/wormhole/sql.template > "${RADIUS_ETC}/mods-enabled/sql"
 cp /opt/wormhole/queries.conf "${RADIUS_ETC}/mods-config/sql/main/mysql/queries.conf"
 cp /opt/wormhole/default "${RADIUS_ETC}/sites-enabled/default"
 cp /opt/wormhole/inner-tunnel "${RADIUS_ETC}/sites-enabled/inner-tunnel"

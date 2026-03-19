@@ -1,11 +1,14 @@
 authserver freeradius:1812
 acctserver freeradius:1813
-servers /etc/radcli/servers
-dictionary /etc/radcli/dictionary
+servers /etc/radiusclient/servers
+dictionary /etc/radiusclient/dictionary
 radius_timeout 10
 radius_retries 3
+radius_deadtime 0
 login_tries 4
+login_timeout 60
 seqfile /var/run/radcli-seq
+mapfile /etc/radiusclient/port-id-map
 login_radius /bin/true
 nologin /etc/nologin
-issue /etc/radcli/issue
+issue /etc/radiusclient/issue

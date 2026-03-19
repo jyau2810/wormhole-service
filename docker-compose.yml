@@ -169,7 +169,7 @@ services:
       - "${VPN_TCP_PORT}:${VPN_TCP_PORT}/tcp"
       - "${VPN_UDP_PORT}:${VPN_UDP_PORT}/udp"
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -x ocserv >/dev/null"]
+      test: ["CMD-SHELL", "pgrep -f 'ocserv-main|ocserv-sm|/usr/local/sbin/ocserv' >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 10

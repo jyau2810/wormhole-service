@@ -11,6 +11,10 @@ server inner-tunnel {
     }
 
     authenticate {
+        Auth-Type EAP {
+            eap
+        }
+
         Auth-Type PAP {
             pap
         }
@@ -32,4 +36,3 @@ server inner-tunnel {
         sql
     }
 }
-

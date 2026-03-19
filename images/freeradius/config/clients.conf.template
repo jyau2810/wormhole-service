@@ -1,5 +1,5 @@
 client ocserv {
-    ipaddr = ocserv
+    ipaddr = 0.0.0.0/0
     secret = ${RADIUS_SHARED_SECRET}
     shortname = ocserv
     nastype = other
@@ -15,4 +15,3 @@ client localhost-ipv6 {
     ipv6addr = ::1
     secret = ${RADIUS_SHARED_SECRET}
 }
-

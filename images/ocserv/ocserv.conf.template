@@ -1,6 +1,6 @@
 auth = "certificate"
-auth = "radius[config=/etc/radcli/radiusclient.conf,groupconfig=false]"
-acct = "radius[config=/etc/radcli/radiusclient.conf]"
+auth = "radius[config=/etc/radiusclient/radiusclient.conf,groupconfig=false]"
+acct = "radius[config=/etc/radiusclient/radiusclient.conf]"
 
 tcp-port = __VPN_TCP_PORT__
 udp-port = __VPN_UDP_PORT__
@@ -45,4 +45,3 @@ default-domain = __VPN_DEFAULT_DOMAIN__
 cisco-client-compat = true
 compression = false
 deny-roaming = false
-

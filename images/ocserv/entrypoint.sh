@@ -33,7 +33,7 @@ require_file() {
     done
 }
 
-mkdir -p /etc/ocserv /etc/radcli /var/run
+mkdir -p /etc/ocserv /etc/radiusclient /var/run
 mkdir -p "${LOG_DIR_ROOT}/ocserv"
 touch "${LOG_DIR_ROOT}/ocserv/ocserv.log" "${LOG_DIR_ROOT}/ocserv/error.log" "${LOG_DIR_ROOT}/ocserv/supervisord.log"
 
@@ -43,10 +43,10 @@ require_file /srv/pki/server/server-cert.pem
 require_file /srv/pki/server/server-key.pem
 
 cp /opt/wormhole/ocserv.conf.template /etc/ocserv/ocserv.conf
-cp /opt/wormhole/radiusclient.conf.template /etc/radcli/radiusclient.conf
-cp /opt/wormhole/servers.template /etc/radcli/servers
+cp /opt/wormhole/radiusclient.conf.template /etc/radiusclient/radiusclient.conf
+cp /opt/wormhole/servers.template /etc/radiusclient/servers
 
-sed -i "s/__RADIUS_SHARED_SECRET__/${RADIUS_SHARED_SECRET}/g" /etc/radcli/servers
+sed -i "s/__RADIUS_SHARED_SECRET__/${RADIUS_SHARED_SECRET}/g" /etc/radiusclient/servers
 sed -i "s/__VPN_TCP_PORT__/${VPN_TCP_PORT}/g" /etc/ocserv/ocserv.conf
 sed -i "s/__VPN_UDP_PORT__/${VPN_UDP_PORT}/g" /etc/ocserv/ocserv.conf
 sed -i "s/__VPN_NETWORK__/${VPN_NETWORK}/g" /etc/ocserv/ocserv.conf

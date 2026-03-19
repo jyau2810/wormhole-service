@@ -24,6 +24,23 @@ RUN build_deps="\
         tar \
         wget \
         xz" \
+    && run_deps="\
+        bash \
+        coreutils \
+        freeradius-client \
+        gnutls \
+        gnutls-utils \
+        iproute2 \
+        iptables \
+        krb5-libs \
+        libev \
+        libmaxminddb \
+        libnl3 \
+        libseccomp \
+        linux-pam \
+        oath-toolkit-liboath \
+        pwgen \
+        supervisor" \
     && apk add --no-cache --virtual .build-deps ${build_deps} \
     && wget -O /tmp/ocserv.tar.xz "ftp://ftp.infradead.org/pub/ocserv/ocserv-${OCSERV_VERSION}.tar.xz" \
     && mkdir -p /usr/src/ocserv \
@@ -33,8 +50,7 @@ RUN build_deps="\
     && ./configure --enable-radius --disable-oidc-auth \
     && make -j"$(nproc)" \
     && make install \
-    && run_deps="$(scanelf --needed --nobanner /usr/local/sbin/ocserv /usr/local/sbin/ocserv-worker /usr/local/bin/occtl /usr/local/bin/ocpasswd | awk '{ gsub(/,/, \"\\nso:\", $2); print \"so:\" $2 }' | xargs -r apk info --installed | sort -u)" \
-    && apk add --no-cache --virtual .run-deps ${run_deps} bash coreutils gnutls-utils iptables iproute2 libnl3 pwgen supervisor \
+    && apk add --no-cache --virtual .run-deps ${run_deps} \
     && apk del .build-deps \
     && rm -rf /usr/src/ocserv
 

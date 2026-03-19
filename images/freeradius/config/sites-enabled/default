@@ -25,6 +25,10 @@ server default {
     }
 
     authenticate {
+        Auth-Type EAP {
+            eap
+        }
+
         Auth-Type PAP {
             pap
         }
@@ -63,4 +67,3 @@ server default {
         }
     }
 }
-
