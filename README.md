@@ -1,6 +1,6 @@
 # Wormhole VPN Stack
 
-Chinese documentation is available in [README.zh-CN.md](/Users/yaoji/Documents/Workspace/wormhole-service/README.zh-CN.md).
+Chinese documentation is available in [README.zh-CN.md](README.zh-CN.md).
 
 Dockerized VPN stack for small-scale account distribution with:
 
