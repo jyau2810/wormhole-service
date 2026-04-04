@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel">
+    <div class="panel-title">
+        <div>
+            <h2>{{ guide.title }} Guide</h2>
+            <p>Use the account connection profile page for the exact server address, shared PSK, and username.</p>
+        </div>
+        <a href="/accounts" class="button-link">Back</a>
+    </div>
+    <ol>
+        {% for step in guide.steps %}
+        <li>{{ step }}</li>
+        {% endfor %}
+    </ol>
+</section>
+{% endblock %}

@@ -16,6 +16,18 @@
             Expiration Date
             <input type="date" name="expiration_date" required value="{{ today }}">
         </label>
+        <label>
+            Speed Profile
+            <select name="speed_profile_id" required>
+                {% for profile in speed_profiles %}
+                <option value="{{ profile.id }}">{{ profile.display_name }} ({{ profile.max_down_kbps // 1024 }}M/{{ profile.max_up_kbps // 1024 }}M)</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Max Concurrent Sessions
+            <input type="number" name="max_concurrent_sessions" min="1" max="8" required value="{{ default_max_concurrent_sessions }}">
+        </label>
         <button type="submit">Create</button>
     </form>
 </section>
@@ -28,8 +40,10 @@
                 <th>Username</th>
                 <th>Status</th>
                 <th>Expires</th>
-                <th>Bound Devices</th>
+                <th>Speed Profile</th>
+                <th>Total Traffic</th>
                 <th>Active Sessions</th>
+                <th>Open Events</th>
                 <th>Last Success</th>
                 <th></th>
             </tr>
@@ -40,8 +54,10 @@
                 <td>{{ account.username }}</td>
                 <td>{{ account.status }}</td>
                 <td>{{ account.expiration_at|datetime_local }}</td>
-                <td>{{ account.active_devices }}/{{ account.max_device_slots }}</td>
+                <td>{{ account.speed_profile_name or "-" }}</td>
+                <td>{{ account.total_bytes }}</td>
                 <td>{{ account.active_sessions }}</td>
+                <td>{{ account.open_events }}</td>
                 <td>{{ account.last_success_at|datetime_local }}</td>
                 <td><a href="/accounts/{{ account.id }}">Manage</a></td>
             </tr>
@@ -50,4 +66,3 @@
     </table>
 </section>
 {% endblock %}
-

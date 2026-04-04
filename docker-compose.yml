@@ -29,39 +29,6 @@ services:
       retries: 10
       start_period: 20s
 
-  ca-api:
-    build:
-      context: ./images/ca-api
-    restart: unless-stopped
-    environment:
-      APP_TIMEZONE: ${APP_TIMEZONE}
-      CA_API_TOKEN: ${CA_API_TOKEN}
-      CA_DATA_DIR: /data
-      CA_COMMON_NAME: ${CA_COMMON_NAME}
-      CA_ORGANIZATION: ${CA_ORGANIZATION}
-      CA_VALIDITY_DAYS: ${CA_VALIDITY_DAYS}
-      CLIENT_CERT_VALIDITY_DAYS: ${CLIENT_CERT_VALIDITY_DAYS}
-      SERVER_CERT_VALIDITY_DAYS: ${SERVER_CERT_VALIDITY_DAYS}
-      VPN_SERVER_HOST: ${VPN_SERVER_HOST}
-      VPN_SERVER_ALT_NAMES: ${VPN_SERVER_ALT_NAMES}
-      P12_EXPORT_PASSWORD: ${P12_EXPORT_PASSWORD}
-      INTERNAL_API_BIND_PORT: ${INTERNAL_API_BIND_PORT}
-      LOG_LEVEL: ${LOG_LEVEL}
-      LOG_DIR_ROOT: ${LOG_DIR_ROOT}
-    volumes:
-      - ca-data:/data
-      - ./var/log:${LOG_DIR_ROOT}
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:${INTERNAL_API_BIND_PORT}/healthz', timeout=3)\"",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-
   freeradius:
     build:
       context: ./images/freeradius
@@ -98,7 +65,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      ca-api:
+      freeradius:
         condition: service_healthy
     environment:
       APP_TIMEZONE: ${APP_TIMEZONE}
@@ -111,11 +78,12 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
       ADMIN_BIND_PORT: ${ADMIN_BIND_PORT}
-      CA_API_URL: http://ca-api:${INTERNAL_API_BIND_PORT}
-      CA_API_TOKEN: ${CA_API_TOKEN}
-      P12_EXPORT_PASSWORD: ${P12_EXPORT_PASSWORD}
       LOG_LEVEL: ${LOG_LEVEL}
       LOG_DIR_ROOT: ${LOG_DIR_ROOT}
+      VPN_SHARED_PSK: ${VPN_SHARED_PSK}
+      VPN_DEFAULT_SPEED_PROFILE: ${VPN_DEFAULT_SPEED_PROFILE}
+      VPN_MAX_CONCURRENT_SESSIONS: ${VPN_MAX_CONCURRENT_SESSIONS}
+      VPN_GATEWAYS: ${VPN_GATEWAYS}
     ports:
       - "127.0.0.1:${ADMIN_PORTAL_PORT}:${ADMIN_BIND_PORT}"
     volumes:
@@ -131,45 +99,46 @@ services:
       retries: 10
       start_period: 15s
 
-  ocserv:
+  ipsec-l2tp-gateway:
     build:
-      context: ./images/ocserv
+      context: ./images/ipsec-l2tp-gateway
     restart: unless-stopped
     depends_on:
-      ca-api:
-        condition: service_healthy
       freeradius:
         condition: service_healthy
     cap_add:
       - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
+      - /dev/ppp:/dev/ppp
     environment:
       APP_TIMEZONE: ${APP_TIMEZONE}
-      VPN_SERVER_HOST: ${VPN_SERVER_HOST}
-      VPN_TCP_PORT: ${VPN_TCP_PORT}
-      VPN_UDP_PORT: ${VPN_UDP_PORT}
+      VPN_SHARED_PSK: ${VPN_SHARED_PSK}
+      VPN_L2TP_PORT: ${VPN_L2TP_PORT}
+      VPN_IPSEC_IKE_PORT: ${VPN_IPSEC_IKE_PORT}
+      VPN_IPSEC_NATT_PORT: ${VPN_IPSEC_NATT_PORT}
       VPN_NETWORK: ${VPN_NETWORK}
       VPN_NETMASK: ${VPN_NETMASK}
-      VPN_MAX_CLIENTS: ${VPN_MAX_CLIENTS}
+      VPN_GATEWAY_IP: ${VPN_GATEWAY_IP}
       VPN_DNS_1: ${VPN_DNS_1}
       VPN_DNS_2: ${VPN_DNS_2}
-      VPN_IDLE_TIMEOUT: ${VPN_IDLE_TIMEOUT}
-      VPN_MOBILE_IDLE_TIMEOUT: ${VPN_MOBILE_IDLE_TIMEOUT}
-      VPN_SESSION_TIMEOUT: ${VPN_SESSION_TIMEOUT}
-      VPN_STATS_REPORT_TIME: ${VPN_STATS_REPORT_TIME}
-      VPN_DEFAULT_DOMAIN: ${VPN_DEFAULT_DOMAIN}
+      VPN_MTU: ${VPN_MTU}
+      VPN_NAT_DEVICE: ${VPN_NAT_DEVICE}
+      VPN_RADIUS_HOST: freeradius
+      VPN_RADIUS_AUTH_PORT: ${VPN_RADIUS_AUTH_PORT}
+      VPN_RADIUS_ACCT_PORT: ${VPN_RADIUS_ACCT_PORT}
+      VPN_NAS_IDENTIFIER: ${VPN_NAS_IDENTIFIER}
+      VPN_NAS_IP_ADDRESS: ${VPN_NAS_IP_ADDRESS}
       RADIUS_SHARED_SECRET: ${RADIUS_SHARED_SECRET}
-      OCSERV_NAT_DEVICE: ${OCSERV_NAT_DEVICE}
       LOG_DIR_ROOT: ${LOG_DIR_ROOT}
     volumes:
-      - ca-data:/srv/pki:ro
       - ./var/log:${LOG_DIR_ROOT}
     ports:
-      - "${VPN_TCP_PORT}:${VPN_TCP_PORT}/tcp"
-      - "${VPN_UDP_PORT}:${VPN_UDP_PORT}/udp"
+      - "${VPN_IPSEC_IKE_PORT}:${VPN_IPSEC_IKE_PORT}/udp"
+      - "${VPN_IPSEC_NATT_PORT}:${VPN_IPSEC_NATT_PORT}/udp"
+      - "${VPN_L2TP_PORT}:${VPN_L2TP_PORT}/udp"
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'ocserv-main|ocserv-sm|/usr/local/sbin/ocserv' >/dev/null"]
+      test: ["CMD-SHELL", "pgrep -x accel-pppd >/dev/null && pgrep -f '/usr/lib/ipsec/starter|charon' >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -187,4 +156,3 @@ services:
 
 volumes:
   db-data:
-  ca-data:

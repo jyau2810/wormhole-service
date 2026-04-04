@@ -25,52 +25,63 @@
 </section>
 
 <section class="panel">
-    <h2>Issue Device</h2>
-    <p>Current bound devices: {{ account.active_devices }}/{{ account.max_device_slots }}. Exported PKCS#12 password: {{ p12_password_hint }}.</p>
-    <form method="post" action="/accounts/{{ account.id }}/devices" class="grid-form">
-        <label>
-            Device Label
-            <input type="text" name="device_label" required placeholder="iphone-yaoji">
-        </label>
-        <button type="submit">Issue Device Certificate</button>
-    </form>
-</section>
-
-<section class="panel">
-    <h2>Bound Devices</h2>
+    <h2>Connection Profile</h2>
+    <p>Speed profile: {{ account.speed_profile_name }} | Max concurrent sessions: {{ account.max_concurrent_sessions }}</p>
+    <p>Total bytes: {{ account.total_bytes }} | Last 5m: {{ account.bytes_5m }} | Last 1h: {{ account.bytes_1h }}</p>
+    <p>VPN Shared PSK: <code>{{ vpn_shared_psk }}</code></p>
+    <p><a href="/accounts/{{ account.id }}/connection-config">Export connection config (JSON)</a></p>
     <table>
         <thead>
             <tr>
-                <th>Slot</th>
-                <th>Label</th>
-                <th>Status</th>
-                <th>Serial</th>
-                <th>Issued</th>
-                <th>Revoked</th>
-                <th></th>
+                <th>Gateway</th>
+                <th>Address</th>
+                <th>Protocol</th>
+                <th>Port</th>
+                <th>Priority</th>
+                <th>Notes</th>
             </tr>
         </thead>
         <tbody>
-            {% for device in devices %}
+            {% for gateway in gateways %}
             <tr>
-                <td>{{ device.slot_no }}</td>
-                <td>{{ device.device_label }}</td>
-                <td>{{ device.cert_status }}</td>
-                <td><code>{{ device.cert_serial }}</code></td>
-                <td>{{ device.created_at|datetime_local }}</td>
-                <td>{{ device.revoked_at|datetime_local }}</td>
-                <td class="row-actions">
-                    <a href="/devices/{{ device.id }}/bundle">Download</a>
-                    {% if device.cert_status == "active" %}
-                    <form method="post" action="/devices/{{ device.id }}/revoke">
-                        <button type="submit" class="danger">Revoke</button>
-                    </form>
-                    {% endif %}
-                </td>
+                <td>{{ gateway.name }}</td>
+                <td><code>{{ gateway.address }}</code></td>
+                <td>{{ gateway.protocol }}</td>
+                <td>{{ gateway.port }}</td>
+                <td>{{ gateway.priority }}</td>
+                <td>{{ gateway.notes or "-" }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    <p>
+        Platform guides:
+        <a href="/guides/macos">macOS</a> |
+        <a href="/guides/windows">Windows</a> |
+        <a href="/guides/iphone">iPhone</a> |
+        <a href="/guides/android">Android</a>
+    </p>
+</section>
+
+<section class="panel">
+    <h2>Account Policy</h2>
+    <form method="post" action="/accounts/{{ account.id }}/settings" class="grid-form">
+        <label>
+            Speed Profile
+            <select name="speed_profile_id" required>
+                {% for profile in speed_profiles %}
+                <option value="{{ profile.id }}" {% if profile.id == account.speed_profile_id %}selected{% endif %}>
+                    {{ profile.display_name }} ({{ profile.max_down_kbps // 1024 }}M/{{ profile.max_up_kbps // 1024 }}M)
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Max Concurrent Sessions
+            <input type="number" name="max_concurrent_sessions" min="1" max="8" required value="{{ account.max_concurrent_sessions }}">
+        </label>
+        <button type="submit">Save Policy</button>
+    </form>
 </section>
 
 <section class="panel">
@@ -79,8 +90,10 @@
         <thead>
             <tr>
                 <th>Started</th>
+                <th>Updated</th>
                 <th>Assigned IP</th>
-                <th>Calling Station</th>
+                <th>Client</th>
+                <th>Gateway</th>
                 <th>In Octets</th>
                 <th>Out Octets</th>
             </tr>
@@ -89,15 +102,59 @@
             {% for session in active_sessions %}
             <tr>
                 <td>{{ session.acctstarttime|datetime_local }}</td>
+                <td>{{ session.acctupdatetime|datetime_local }}</td>
                 <td>{{ session.framedipaddress or "-" }}</td>
                 <td>{{ session.callingstationid or "-" }}</td>
+                <td>{{ session.nasipaddress or "-" }}</td>
                 <td>{{ session.acctinputoctets or 0 }}</td>
                 <td>{{ session.acctoutputoctets or 0 }}</td>
             </tr>
             {% endfor %}
             {% if not active_sessions %}
             <tr>
-                <td colspan="5">No active sessions.</td>
+                <td colspan="7">No active sessions.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</section>
+
+<section class="panel">
+    <h2>Open And Recent Events</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Detected</th>
+                <th>Event</th>
+                <th>Status</th>
+                <th>Details</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in events %}
+            <tr>
+                <td>{{ event.detected_at|datetime_local }}</td>
+                <td>{{ event.event_type|event_name }}</td>
+                <td>{{ event.status }}</td>
+                <td><code>{{ event.details_json }}</code></td>
+                <td class="row-actions">
+                    {% if event.status == "open" %}
+                    <form method="post" action="/events/{{ event.id }}/resolve">
+                        <button type="submit">Resolve</button>
+                    </form>
+                    <form method="post" action="/events/{{ event.id }}/disable-account">
+                        <button type="submit" class="danger">Disable Account</button>
+                    </form>
+                    {% else %}
+                    <span>Resolved {{ event.resolved_at|datetime_local }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not events %}
+            <tr>
+                <td colspan="5">No events yet.</td>
             </tr>
             {% endif %}
         </tbody>
@@ -129,4 +186,3 @@
     </table>
 </section>
 {% endblock %}
-

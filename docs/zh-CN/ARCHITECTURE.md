@@ -1,73 +1,69 @@
 # 架构说明
 
-英文原版请见 [ARCHITECTURE.md](/Users/yaoji/Documents/Workspace/wormhole-service/docs/ARCHITECTURE.md)。
+英文原版请见 [ARCHITECTURE.md](/Users/jyau/Documents/Projects/wormhole-service/docs/ARCHITECTURE.md)。
 
 ## 总览
 
-这套方案面向单机 Docker 部署，职责划分如下：
+当前实现是一个面向小规模场景的双栈接入控制平面：
 
-- `ocserv` 在 `443/tcp` 和 `443/udp` 终止 VPN 流量
-- `FreeRADIUS` 校验账号密码和账号有效期
-- `MariaDB` 存储 VPN 账号、设备槽位、RADIUS 校验项、认证日志和记账数据
-- `ca-api` 管理内部 CA、客户端证书签发、吊销和 CRL 生成
-- `admin-portal` 提供日常运维后台
+- `ipsec-l2tp-gateway`
+  - `strongSwan` 处理 `IPSec PSK`
+  - `accel-ppp` 处理 `L2TP/PPP`、RADIUS 鉴权与记账
+- `FreeRADIUS` 负责账号鉴权、到期控制与回传限速属性
+- `MariaDB` 存储账号、限速档位、认证日志、会话和异常事件
+- `admin-portal` 负责账号管理、接入点展示、流量观察和人工处置
 
 ## 认证模型
 
-每次 VPN 登录都要求两个独立因素：
+每次原生客户端登录依赖两层参数：
 
-1. 由内部 CA 签发且仍有效的客户端证书
-2. 由 FreeRADIUS 校验通过的 VPN 用户名和密码
+1. 网关级共享密钥 `VPN_SHARED_PSK`
+2. 账号级用户名/密码
 
-在 `ocserv` 中通过以下方式实现：
+RADIUS 中同步的核心属性：
 
-- `auth = "certificate"`
-- `auth = "radius[...]"`
-
-账号有效期通过写入 `radcheck` 中的以下属性来控制：
-
-- `Crypt-Password`
+- `NT-Password`
 - `Expiration`
+- `Simultaneous-Use`
 
-当账号被禁用时，后台会把有效的 RADIUS 到期时间直接改写为当前 UTC 时间，从而立即阻止新登录。
+回传给网关的回复属性：
 
-## 设备绑定模型
+- `Filter-Id`
+- `WISPr-Bandwidth-Max-Up`
+- `WISPr-Bandwidth-Max-Down`
 
-设备绑定由应用层控制，不做硬件指纹绑定。
+## 账号与策略
 
-- 每个账号最多拥有 `2` 个有效设备槽位
-- 每个设备槽位对应 1 张有效客户端证书
-- 吊销设备证书后会释放对应槽位
-- 试图签发第 3 张设备证书时，后台会直接拒绝
+每个账号具备：
 
-数据真实来源是 `vpn_devices` 表。
+- 启用/禁用状态
+- 到期时间
+- 限速档位
+- 最大并发会话数
 
-## 日志与可观测性
+后台不再维护设备证书、设备槽位或 CA/CRL 生命周期。
 
-- `radpostauth` 记录成功和失败的认证结果
-- `radacct` 记录活动和历史会话，前提是 NAS 发送 accounting 包
-- 后台页面展示：
-  - 账号到期时间
-  - 已占用设备数
-  - 最近认证记录
-  - 来自 `radacct` 的当前在线会话
-- 文件日志写入宿主机 `var/log/`，并由 `logrotate` sidecar 每日滚动
+## 可观测性
 
-## 证书布局
+后台聚合以下数据：
 
-`ca-data` 卷由 `ca-api` 和 `ocserv` 共享。
+- `radpostauth` 中最近认证成功/失败
+- `radacct` 中活动会话和累计流量
+- `vpn_account_events` 中异常事件
 
-- `/data/ca/ca-cert.pem`
-- `/data/ca/ca-key.pem`
-- `/data/ca/crl.pem`
-- `/data/server/server-cert.pem`
-- `/data/server/server-key.pem`
-- `/data/clients/<serial>/...`
+当前内置异常规则：
 
-`ocserv` 以只读方式把同一卷挂载到 `/srv/pki`。
+- 并发会话数超限
+- 15 分钟内失败认证过多
+- 30 分钟内跨多个网关反复建立会话
+- 5 分钟流量超过限速档位预估阈值
 
-## 已知边界
+## UniConnect 预留
 
-- 首次部署使用内部 CA 生成的 VPN 服务端证书；有域名后应替换为公网证书
-- 设备“最后在线时间”目前来自 RADIUS 认证和记账历史推断，不是独立的设备心跳
-- 本方案面向小规模场景，不是多节点高可用部署方案
+Android 12+ 的 `UniConnect SSL VPN` 在本仓库中仅预留：
+
+- 统一账号源
+- 网关元数据导出
+- 限速与异常事件模型
+
+联软兼容 SSL 网关本身不在当前仓库实现范围内。

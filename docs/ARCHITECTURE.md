@@ -1,71 +1,54 @@
 # Architecture
 
-## Overview
+The current stack is a small-scale remote-access control plane built around:
 
-This stack is designed for a single-host Docker deployment where:
+- `ipsec-l2tp-gateway`
+  - `strongSwan` for IPSec PSK
+  - `accel-ppp` for L2TP/PPP, RADIUS auth, and accounting
+- `FreeRADIUS` for authentication, expiration enforcement, and bandwidth replies
+- `MariaDB` for accounts, speed profiles, accounting logs, and anomaly events
+- `admin-portal` for account operations, gateway metadata, traffic, and event handling
 
-- `ocserv` terminates VPN traffic on `443/tcp` and `443/udp`
-- `FreeRADIUS` validates account passwords and account expiration
-- `MariaDB` stores VPN accounts, device slots, RADIUS check items, accounting, and auth logs
-- `ca-api` manages the internal CA, client certificate issuance, revocation, and CRL generation
-- `admin-portal` provides the day-to-day operations UI
+## Authentication model
 
-## Authentication Model
+Each native VPN login depends on:
 
-Each VPN login requires two independent factors:
+1. The shared IPSec PSK
+2. The account username and password
 
-1. A valid client certificate issued by the internal CA
-2. A valid VPN username/password pair checked by FreeRADIUS
+The portal syncs these RADIUS control attributes:
 
-This is implemented in `ocserv` with:
-
-- `auth = "certificate"`
-- `auth = "radius[...]"`
-
-Account validity is enforced by writing these `radcheck` items:
-
-- `Crypt-Password`
+- `NT-Password`
 - `Expiration`
+- `Simultaneous-Use`
 
-When an account is disabled, the portal rewrites the effective RADIUS expiration to the current UTC time so new logins are denied immediately.
+It also writes reply attributes for the gateway:
 
-## Device Binding Model
+- `Filter-Id`
+- `WISPr-Bandwidth-Max-Up`
+- `WISPr-Bandwidth-Max-Down`
 
-Device binding is enforced by the application layer, not by hardware fingerprinting.
+## Account policy
 
-- Each account can hold at most `2` active device slots.
-- Each device slot corresponds to one active client certificate.
-- Revoking a device certificate frees the slot.
-- Attempting to issue a third device certificate is rejected by the admin portal.
+Each account carries:
 
-The source of truth is the `vpn_devices` table.
+- enabled or disabled status
+- expiration timestamp
+- speed profile
+- max concurrent sessions
 
-## Logging and Visibility
+The previous client-certificate, device-slot, and CA/CRL model has been removed from the active deployment path.
 
-- `radpostauth` records successful and failed auth outcomes.
-- `radacct` records active and historical sessions if the NAS sends accounting packets.
-- The portal surfaces:
-  - account expiration
-  - active device count
-  - recent auth attempts
-  - currently open sessions from `radacct`
-- File logs are written under `var/log/` on the host and rotated daily by the `logrotate` sidecar.
+## Observability
 
-## Certificate Layout
+The portal combines:
 
-The `ca-data` volume is shared between `ca-api` and `ocserv`.
+- `radpostauth` for recent auth successes and failures
+- `radacct` for active sessions and byte counters
+- `vpn_account_events` for anomaly tracking
 
-- `/data/ca/ca-cert.pem`
-- `/data/ca/ca-key.pem`
-- `/data/ca/crl.pem`
-- `/data/server/server-cert.pem`
-- `/data/server/server-key.pem`
-- `/data/clients/<serial>/...`
+Built-in anomaly signals include excessive concurrency, repeated auth rejects, gateway hopping, and 5-minute traffic spikes.
 
-`ocserv` mounts the same volume read-only under `/srv/pki`.
+## UniConnect boundary
 
-## Known Boundaries
-
-- The initial deployment uses an internally generated VPN server certificate. Replace it with a public certificate once a domain is available.
-- Device "last seen" is currently inferred from RADIUS accounting and auth history, not from a dedicated device heartbeat.
-- This stack targets small-scale operation, not multi-node HA deployment.
+The repository reserves a future integration surface for an external UniConnect SSL VPN gateway, but does not implement a UniConnect-compatible SSL gateway itself.

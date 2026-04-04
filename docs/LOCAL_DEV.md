@@ -2,21 +2,19 @@
 
 ## Scope
 
-Local development on macOS is limited to non-VPN data plane validation.
-
-This mode starts:
+Local macOS validation is limited to the control-plane services:
 
 - `db`
-- `ca-api`
 - `freeradius`
 - `admin-portal`
 - `logrotate`
 
-This mode does not start:
+This mode does not validate:
 
-- `ocserv`
-
-Do not treat local macOS results as proof that TUN, NAT, or full VPN traffic forwarding works.
+- `ipsec-l2tp-gateway`
+- PPP forwarding
+- IPSec transport
+- NAT and full internet egress
 
 ## Commands
 
@@ -27,27 +25,8 @@ make local-smoke
 make local-down
 ```
 
-## What `local-smoke` Verifies
+## What `local-smoke` verifies
 
 - admin portal health endpoint
-- CA API health endpoint from inside the container
-- FreeRADIUS password authentication using `radtest`
-- database write path into `radcheck`
-
-## Local Logs
-
-All file logs are written under:
-
-```text
-var/log/
-```
-
-Important paths:
-
-- `var/log/admin-portal/app.log`
-- `var/log/admin-portal/access.log`
-- `var/log/admin-portal/error.log`
-- `var/log/ca-api/app.log`
-- `var/log/freeradius/freeradius.log`
-- `var/log/mariadb/error.log`
-
+- database writes into `radcheck`
+- FreeRADIUS auth using `NT-Password` and an `MSCHAP` test request

@@ -1,91 +1,41 @@
-# 故障排查
+# 排障说明
 
-英文原版请见 [TROUBLESHOOTING.md](/Users/yaoji/Documents/Workspace/wormhole-service/docs/TROUBLESHOOTING.md)。
+英文原版请见 [TROUBLESHOOTING.md](/Users/jyau/Documents/Projects/wormhole-service/docs/TROUBLESHOOTING.md)。
 
-## `docker: command not found`
+## 原生 L2TP 客户端无法连接
 
-宿主机还没有安装 Docker。先安装 Docker 和 Compose 插件。
+先检查：
 
-## `Cannot open TUN/TAP dev`
+- 宿主机是否放行 `500/udp`、`4500/udp`、`1701/udp`
+- `/dev/net/tun` 和 `/dev/ppp` 是否可用
+- 客户端填写的 `VPN_SHARED_PSK` 是否正确
 
-宿主机缺少 `/dev/net/tun`，或者容器运行时没有把它透传进去。
-
-检查：
-
-```bash
-ls -l /dev/net/tun
-docker compose ps
-```
-
-## VPN 已连接但无法访问互联网
-
-检查宿主机转发：
+再查看：
 
 ```bash
-sysctl net.ipv4.ip_forward
+docker compose logs --tail=100 ipsec-l2tp-gateway
+docker compose logs --tail=100 freeradius
 ```
 
-检查 ocserv 容器内 NAT 规则：
+## 账号存在但认证被拒绝
+
+先看后台中的最近认证记录，再检查数据库中的 `radcheck`：
 
 ```bash
-docker compose exec ocserv iptables -t nat -S
-docker compose exec ocserv iptables -S FORWARD
+docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius -e \
+  "SELECT username, attribute, value FROM radcheck WHERE username='YOUR_USER';"
 ```
 
-如果你的出口网卡不是 `eth0`，请在 `.env` 中把 `OCSERV_NAT_DEVICE` 改成正确值。
+确认存在：
 
-## 管理后台能打开但登录失败
+- `NT-Password`
+- `Expiration`
+- `Simultaneous-Use`
 
-启动后 `.env` 中的 `ADMIN_PASSWORD` 是真实来源。如果你修改了 `.env`，需要重建后台容器：
+## 流量或异常事件不准确
 
-```bash
-docker compose up -d --build admin-portal
-```
+重点检查：
 
-## 账号存在但 VPN 登录被拒绝
-
-先看 FreeRADIUS 文件日志：
-
-```bash
-tail -n 100 var/log/freeradius/freeradius.log
-```
-
-再检查生成的 `radcheck` 记录：
-
-```bash
-docker compose exec db mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e \
-'SELECT username, attribute, op, value FROM radcheck ORDER BY username, attribute;'
-```
-
-## 设备包可导入，但证书登录仍失败
-
-常见原因：
-
-- 设备证书已经被吊销
-- CRL 已更新，但客户端仍在使用旧证书
-- 账号密码错误
-- 账号已过期或被禁用
-
-检查：
-
-- 后台中的认证历史
-- `var/log/ca-api/error.log`
-- `var/log/ocserv/error.log`
-
-## 应用报错但 `docker logs` 看起来为空
-
-本方案主要把服务日志写到 `var/log/` 下的文件。
-
-优先查看对应文件：
-
-- 管理后台：`var/log/admin-portal/error.log`
-- CA API：`var/log/ca-api/error.log`
-- FreeRADIUS：`var/log/freeradius/freeradius.log`
-- ocserv：`var/log/ocserv/error.log`
-- MariaDB：`var/log/mariadb/error.log`
-
-## 不能签发第 3 台设备
-
-这是预期行为。每个账号最多只能有 2 个有效设备槽位。
-
-先吊销 1 台已有设备，再签发替换设备。
+- `radacct` 是否收到 interim update
+- 网关上报的 NAS IP 和标识是否正确
+- 账号绑定的限速档位是否符合预期

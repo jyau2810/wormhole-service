@@ -1,31 +1,31 @@
-# Wormhole VPN Stack
+# Wormhole Access Stack
 
-Chinese documentation is available in [README.zh-CN.md](README.zh-CN.md).
+Chinese documentation is available in [README.zh-CN.md](/Users/jyau/Documents/Projects/wormhole-service/README.zh-CN.md).
 
-Dockerized VPN stack for small-scale account distribution with:
+This repository provides a small-scale remote-access control plane with:
 
-- OpenConnect/ocserv VPN
-- FreeRADIUS-backed username/password auth
-- Per-account expiration control
-- Per-account maximum 2 bound device certificates
-- Internal CA and CRL management
-- Lightweight admin portal
+- `L2TP/IPSec PSK` as the primary native VPN path
+- `FreeRADIUS` authentication, accounting, and anomaly signals
+- Per-account expiration, concurrency, and bandwidth profiles
+- Admin UI for connection metadata, active sessions, traffic, and security events
+- Reserved integration surface for a future external `UniConnect SSL VPN` gateway
 
 ## Quick Start
 
-1. Copy `.env.example` to `.env` and fill in strong secrets.
-2. Read `docs/DEPLOY.md` and complete the host prerequisites.
-3. Start the stack:
+1. Copy `.env.example` to `.env`.
+2. Set strong values for database secrets, `RADIUS_SHARED_SECRET`, and `VPN_SHARED_PSK`.
+3. Update `VPN_GATEWAYS` with your real public access points.
+4. Start the stack:
 
 ```bash
 docker compose --env-file .env up -d --build
 ```
 
-4. Open the admin portal on `http://127.0.0.1:${ADMIN_PORTAL_PORT}` from the server itself or through an SSH tunnel.
+5. Open the admin portal on `http://127.0.0.1:${ADMIN_PORTAL_PORT}` and create an account to view the exported connection profile.
 
-## Local Non-VPN Validation
+## Local Validation
 
-On macOS, only the non-VPN services are suitable for local validation.
+On macOS, local validation should stay focused on the non-VPN services:
 
 ```bash
 cp .env.example .env
@@ -33,43 +33,18 @@ make local-up
 make local-smoke
 ```
 
-See `docs/LOCAL_DEV.md` for details.
+Full PPP, IPSec, and NAT validation still needs a Linux host.
 
-## Documentation
+## Key Components
 
-- English:
-  - `README.md`
-  - `env.md`
-  - `docs/ARCHITECTURE.md`
-  - `docs/DEPLOY.md`
-  - `docs/LOCAL_DEV.md`
-  - `docs/OPERATIONS.md`
-  - `docs/TROUBLESHOOTING.md`
-- Chinese:
-  - `README.zh-CN.md`
-  - `env.zh-CN.md`
-  - `docs/zh-CN/ARCHITECTURE.md`
-  - `docs/zh-CN/DEPLOY.md`
-  - `docs/zh-CN/LOCAL_DEV.md`
-  - `docs/zh-CN/OPERATIONS.md`
-  - `docs/zh-CN/TROUBLESHOOTING.md`
+- `docker-compose.yml`
+- `.env.example`
+- `bootstrap/db`
+- `images/ipsec-l2tp-gateway`
+- `images/freeradius`
+- `images/admin-portal`
 
-## Delivered Components
+## Current Boundaries
 
-- `docker-compose.yml`: one-command deployment entrypoint
-- `Makefile`: local smoke-test helpers
-- `.env.example`: required environment variables
-- `env.md`: variable reference
-- `bootstrap/db`: MariaDB bootstrap schema
-- `images/ocserv`: VPN server image and runtime templates
-- `images/freeradius`: FreeRADIUS image and SQL-backed config
-- `images/ca-api`: internal CA/CRL API
-- `images/admin-portal`: admin web UI
-- `docs/`: architecture, deployment, operations, troubleshooting
-- `var/log/`: host-side service log directory
-
-## Notes
-
-- This repository bootstraps a self-signed VPN server certificate from the internal CA for initial deployment.
-- For production use, replace the VPN server certificate with a public certificate after you have a domain.
-- Docker is not available in the current local environment, so validation in this repository is limited to static checks and Python tests.
+- The repository does not implement a UniConnect-compatible SSL VPN gateway.
+- The admin portal stores the VPN password in plaintext so it can derive and rotate `NT-Password` for FreeRADIUS. That is acceptable for this small-scale control plane, but production deployments should move secrets into a dedicated secret-management layer.

@@ -40,23 +40,28 @@ with urllib.request.urlopen(target, timeout=5) as response:
 print("admin portal health check passed")
 PY
 
-docker compose --env-file .env exec -T ca-api python - <<'PY'
-import urllib.request
-with urllib.request.urlopen("http://127.0.0.1:9000/healthz", timeout=5) as response:
-    if response.status != 200:
-        raise SystemExit(response.status)
-print("ca-api health check passed")
+NT_PASSWORD_HASH="$(python3 - <<'PY'
+import sys
+sys.path.insert(0, "images/admin-portal")
+from app.radius_sync import nt_password_hash
+
+print(nt_password_hash("local-smoke"))
 PY
+)"
 
 docker compose --env-file .env exec -T db mariadb \
   -u root -p"${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}" <<'SQL'
 DELETE FROM radcheck WHERE username = 'local-smoke';
 INSERT INTO radcheck (username, attribute, op, value) VALUES
-  ('local-smoke', 'Cleartext-Password', ':=', 'local-smoke'),
+  ('local-smoke', 'NT-Password', ':=', '__NT_PASSWORD_HASH__'),
   ('local-smoke', 'Expiration', ':=', '31 Dec 2099 23:59:59 UTC');
 SQL
 
-docker compose --env-file .env exec -T freeradius radtest local-smoke local-smoke 127.0.0.1 0 "${RADIUS_SHARED_SECRET}" | tee /tmp/wormhole-local-smoke.out
+docker compose --env-file .env exec -T db mariadb \
+  -u root -p"${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}" \
+  -e "UPDATE radcheck SET value='${NT_PASSWORD_HASH}' WHERE username='local-smoke' AND attribute='NT-Password';"
+
+docker compose --env-file .env exec -T freeradius radtest -t mschap local-smoke local-smoke 127.0.0.1 0 "${RADIUS_SHARED_SECRET}" | tee /tmp/wormhole-local-smoke.out
 
 if ! grep -q "Access-Accept" /tmp/wormhole-local-smoke.out; then
   echo "radtest failed" >&2

@@ -5,7 +5,7 @@ import json
 import re
 import threading
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -21,7 +21,7 @@ from .settings import Settings
 
 
 def utcnow() -> datetime:
-    return datetime.now(UTC)
+    return datetime.now(timezone.utc)
 
 
 def _slug(value: str) -> str:
@@ -331,4 +331,3 @@ class CAManager:
             raise KeyError(serial)
         bundle_path = self.clients_dir / serial / item["bundle_filename"]
         return item["bundle_filename"], bundle_path.read_bytes()
-

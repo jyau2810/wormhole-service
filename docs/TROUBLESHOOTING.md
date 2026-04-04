@@ -1,89 +1,35 @@
 # Troubleshooting
 
-## `docker: command not found`
-
-Docker is not installed on the host. Install Docker and the Compose plugin first.
-
-## `Cannot open TUN/TAP dev`
-
-The host is missing `/dev/net/tun`, or the container runtime is not allowed to pass it through.
+## Native L2TP client cannot connect
 
 Check:
 
-```bash
-ls -l /dev/net/tun
-docker compose ps
-```
+- host firewall exposes `500/udp`, `4500/udp`, and `1701/udp`
+- `/dev/net/tun` and `/dev/ppp` are available
+- `VPN_SHARED_PSK` matches what the client uses
 
-## VPN connects but no internet access
-
-Check host forwarding:
+Then inspect:
 
 ```bash
-sysctl net.ipv4.ip_forward
+docker compose logs --tail=100 ipsec-l2tp-gateway
+docker compose logs --tail=100 freeradius
 ```
 
-Check the ocserv container NAT rules:
+## Account exists but auth is rejected
+
+Check recent auth attempts in the portal first, then inspect:
 
 ```bash
-docker compose exec ocserv iptables -t nat -S
-docker compose exec ocserv iptables -S FORWARD
+docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius -e \
+  "SELECT username, attribute, value FROM radcheck WHERE username='YOUR_USER';"
 ```
 
-If your outbound interface is not `eth0`, set `OCSERV_NAT_DEVICE` correctly in `.env`.
+Verify that `NT-Password`, `Expiration`, and `Simultaneous-Use` exist.
 
-## Admin portal opens but login fails
-
-`ADMIN_PASSWORD` from `.env` is the source of truth after startup. If you changed `.env`, recreate the portal container:
-
-```bash
-docker compose up -d --build admin-portal
-```
-
-## Account exists but VPN login is rejected
-
-Check FreeRADIUS file logs first:
-
-```bash
-tail -n 100 var/log/freeradius/freeradius.log
-```
-
-Check the generated `radcheck` rows:
-
-```bash
-docker compose exec db mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e \
-'SELECT username, attribute, op, value FROM radcheck ORDER BY username, attribute;'
-```
-
-## Device bundle imports but certificate login still fails
-
-Common causes:
-
-- the device certificate was revoked
-- the CRL was regenerated and the client is still presenting an old certificate
-- the account password is wrong
-- the account is expired or disabled
+## Traffic or anomaly signals look wrong
 
 Check:
 
-- portal auth history
-- `var/log/ca-api/error.log`
-- `var/log/ocserv/error.log`
-
-## Application error but `docker logs` looks empty
-
-This stack writes primary service logs to files under `var/log/`.
-
-Check the relevant file first:
-
-- admin portal: `var/log/admin-portal/error.log`
-- CA API: `var/log/ca-api/error.log`
-- FreeRADIUS: `var/log/freeradius/freeradius.log`
-- ocserv: `var/log/ocserv/error.log`
-- MariaDB: `var/log/mariadb/error.log`
-
-## Third device cannot be issued
-
-This is expected. Each account has a maximum of two active device slots.
-
-Revoke one active device first, then issue the replacement.
+- whether `radacct` rows are receiving interim updates
+- whether the gateway NAS IP and identifier match the expected values
+- whether the account speed profile has realistic limits

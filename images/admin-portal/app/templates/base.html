@@ -3,14 +3,14 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Wormhole VPN</title>
+    <title>Wormhole Access</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
 </head>
 <body>
     <header class="topbar">
         <div>
-            <h1>Wormhole VPN</h1>
-            <p>Small-scale VPN account and device management</p>
+            <h1>Wormhole Access</h1>
+            <p>L2TP/IPSec account, gateway, traffic, and anomaly management</p>
         </div>
         {% if current_admin %}
         <form method="post" action="/logout">
@@ -26,4 +26,3 @@
     </main>
 </body>
 </html>
-
