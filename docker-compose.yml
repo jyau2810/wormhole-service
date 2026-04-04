@@ -6,9 +6,9 @@ services:
       context: ./images/mariadb
     restart: unless-stopped
     environment:
-      MARIADB_DATABASE: ${MARIADB_DATABASE}
-      MARIADB_USER: ${MARIADB_USER}
-      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
       MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
       TZ: ${APP_TIMEZONE}
       LOG_DIR_ROOT: ${LOG_DIR_ROOT}
@@ -38,11 +38,11 @@ services:
         condition: service_healthy
     environment:
       APP_TIMEZONE: ${APP_TIMEZONE}
-      RADIUS_DB_HOST: db
-      RADIUS_DB_PORT: ${RADIUS_DB_PORT}
-      RADIUS_DB_NAME: ${RADIUS_DB_NAME}
-      RADIUS_DB_USER: ${RADIUS_DB_USER}
-      RADIUS_DB_PASSWORD: ${RADIUS_DB_PASSWORD}
+      DB_HOST: db
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
       RADIUS_SHARED_SECRET: ${RADIUS_SHARED_SECRET}
       LOG_DIR_ROOT: ${LOG_DIR_ROOT}
     volumes:
@@ -70,14 +70,13 @@ services:
     environment:
       APP_TIMEZONE: ${APP_TIMEZONE}
       DB_HOST: db
-      DB_PORT: ${RADIUS_DB_PORT}
-      DB_NAME: ${RADIUS_DB_NAME}
-      DB_USER: ${RADIUS_DB_USER}
-      DB_PASSWORD: ${RADIUS_DB_PASSWORD}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
-      ADMIN_BIND_PORT: ${ADMIN_BIND_PORT}
       LOG_LEVEL: ${LOG_LEVEL}
       LOG_DIR_ROOT: ${LOG_DIR_ROOT}
       VPN_SHARED_PSK: ${VPN_SHARED_PSK}
@@ -85,14 +84,14 @@ services:
       VPN_MAX_CONCURRENT_SESSIONS: ${VPN_MAX_CONCURRENT_SESSIONS}
       VPN_GATEWAYS: ${VPN_GATEWAYS}
     ports:
-      - "127.0.0.1:${ADMIN_PORTAL_PORT}:${ADMIN_BIND_PORT}"
+      - "127.0.0.1:${ADMIN_PORTAL_PORT}:8000"
     volumes:
       - ./var/log:${LOG_DIR_ROOT}
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:${ADMIN_BIND_PORT}/healthz', timeout=3)\"",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)\"",
         ]
       interval: 10s
       timeout: 5s

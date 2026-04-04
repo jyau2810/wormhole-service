@@ -6,11 +6,11 @@ sql {
         warnings = auto
     }
 
-    server = "${RADIUS_DB_HOST}"
-    port = ${RADIUS_DB_PORT}
-    login = "${RADIUS_DB_USER}"
-    password = "${RADIUS_DB_PASSWORD}"
-    radius_db = "${RADIUS_DB_NAME}"
+    server = "${DB_HOST}"
+    port = ${DB_PORT}
+    login = "${DB_USER}"
+    password = "${DB_PASSWORD}"
+    radius_db = "${DB_NAME}"
 
     acct_table1 = "radacct"
     acct_table2 = "radacct"
@@ -42,4 +42,3 @@ sql {
 
     $INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
 }
-

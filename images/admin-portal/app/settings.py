@@ -82,7 +82,7 @@ def load_settings() -> Settings:
         admin_username=os.getenv("ADMIN_USERNAME", "admin"),
         admin_password=os.getenv("ADMIN_PASSWORD", ""),
         session_secret=os.getenv("ADMIN_SESSION_SECRET", "change-me"),
-        bind_port=_as_int("ADMIN_BIND_PORT", 8000),
+        bind_port=8000,
         timezone_name=os.getenv("APP_TIMEZONE", "UTC"),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         log_dir_root=Path(os.getenv("LOG_DIR_ROOT", "/var/log/wormhole")),

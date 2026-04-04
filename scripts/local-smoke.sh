@@ -24,7 +24,7 @@ PY
 
 ADMIN_PORTAL_PORT="$(env_value ADMIN_PORTAL_PORT)"
 MARIADB_ROOT_PASSWORD="$(env_value MARIADB_ROOT_PASSWORD)"
-MARIADB_DATABASE="$(env_value MARIADB_DATABASE)"
+DB_NAME="$(env_value DB_NAME)"
 RADIUS_SHARED_SECRET="$(env_value RADIUS_SHARED_SECRET)"
 
 docker compose --env-file .env ps
@@ -50,7 +50,7 @@ PY
 )"
 
 docker compose --env-file .env exec -T db mariadb \
-  -u root -p"${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}" <<'SQL'
+  -u root -p"${MARIADB_ROOT_PASSWORD}" "${DB_NAME}" <<'SQL'
 DELETE FROM radcheck WHERE username = 'local-smoke';
 INSERT INTO radcheck (username, attribute, op, value) VALUES
   ('local-smoke', 'NT-Password', ':=', '__NT_PASSWORD_HASH__'),
@@ -58,7 +58,7 @@ INSERT INTO radcheck (username, attribute, op, value) VALUES
 SQL
 
 docker compose --env-file .env exec -T db mariadb \
-  -u root -p"${MARIADB_ROOT_PASSWORD}" "${MARIADB_DATABASE}" \
+  -u root -p"${MARIADB_ROOT_PASSWORD}" "${DB_NAME}" \
   -e "UPDATE radcheck SET value='${NT_PASSWORD_HASH}' WHERE username='local-smoke' AND attribute='NT-Password';"
 
 docker compose --env-file .env exec -T freeradius radtest -t mschap local-smoke local-smoke 127.0.0.1 0 "${RADIUS_SHARED_SECRET}" | tee /tmp/wormhole-local-smoke.out

@@ -17,6 +17,7 @@
 
 ## 文档
 
+- [环境变量说明](/Users/jyau/Documents/Projects/wormhole-service/docs/ENV.md)
 - [技术文档](/Users/jyau/Documents/Projects/wormhole-service/docs/ARCHITECTURE.md)
 - [排障文档](/Users/jyau/Documents/Projects/wormhole-service/docs/TROUBLESHOOTING.md)
 
@@ -71,9 +72,11 @@ sudo sysctl --system
 cp .env.example .env
 ```
 
+详细解释见 [环境变量说明](/Users/jyau/Documents/Projects/wormhole-service/docs/ENV.md)。
+
 至少需要修改以下变量：
 
-- `MARIADB_PASSWORD`
+- `DB_PASSWORD`
 - `MARIADB_ROOT_PASSWORD`
 - `RADIUS_SHARED_SECRET`
 - `ADMIN_PASSWORD`
@@ -85,14 +88,13 @@ cp .env.example .env
 
 `数据库`
 
-- `MARIADB_DATABASE`、`MARIADB_USER`、`MARIADB_PASSWORD`
+- `DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD`
 - `MARIADB_ROOT_PASSWORD`
-- `RADIUS_DB_PORT`、`RADIUS_DB_NAME`、`RADIUS_DB_USER`、`RADIUS_DB_PASSWORD`
 
 `后台`
 
 - `APP_TIMEZONE`
-- `ADMIN_PORTAL_PORT`、`ADMIN_BIND_PORT`
+- `ADMIN_PORTAL_PORT`
 - `ADMIN_USERNAME`、`ADMIN_PASSWORD`、`ADMIN_SESSION_SECRET`
 - `VPN_SHARED_PSK`
 - `VPN_DEFAULT_SPEED_PROFILE`
@@ -202,5 +204,6 @@ docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius
 
 更详细的技术说明与排障步骤见：
 
+- [环境变量说明](/Users/jyau/Documents/Projects/wormhole-service/docs/ENV.md)
 - [技术文档](/Users/jyau/Documents/Projects/wormhole-service/docs/ARCHITECTURE.md)
 - [排障文档](/Users/jyau/Documents/Projects/wormhole-service/docs/TROUBLESHOOTING.md)
