@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
+from decimal import Decimal
 
 from .db import transaction
 from .settings import Settings
@@ -22,7 +23,16 @@ class AccountSignal:
 
 
 def _expected_bytes_for_5m(limit_kbps: int) -> int:
-    return int(limit_kbps * 1000 / 8 * 300 * 1.2)
+    normalized_limit_kbps = int(limit_kbps)
+    return normalized_limit_kbps * 1000 * 300 * 12 // 80
+
+
+def _normalize_account_signal(row: dict) -> AccountSignal:
+    normalized = {
+        key: int(value) if isinstance(value, Decimal) else value
+        for key, value in row.items()
+    }
+    return AccountSignal(**normalized)
 
 
 def refresh_account_events(settings: Settings) -> None:
@@ -62,7 +72,7 @@ def refresh_account_events(settings: Settings) -> None:
                 LEFT JOIN vpn_speed_profiles sp ON sp.id = a.speed_profile_id
                 """
             )
-            rows = [AccountSignal(**row) for row in cursor.fetchall()]
+            rows = [_normalize_account_signal(row) for row in cursor.fetchall()]
 
             active_by_account: dict[int, set[str]] = {}
             for row in rows:
