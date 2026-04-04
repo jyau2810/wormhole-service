@@ -18,6 +18,40 @@ docker compose logs --tail=100 admin-portal
 docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius
 ```
 
+## 当前电脑打不开远程部署机后台
+
+先确认当前设计是否符合预期：
+
+- 后台默认只绑定在部署机的 `127.0.0.1:${ADMIN_PORTAL_PORT}`
+- 因此不能直接在当前电脑访问 `http://服务器公网IP:${ADMIN_PORTAL_PORT}`
+
+推荐做法是使用 SSH 隧道：
+
+```bash
+ssh -L 18080:127.0.0.1:8080 root@43.156.147.242
+```
+
+然后在当前电脑浏览器打开：
+
+```text
+http://127.0.0.1:18080
+```
+
+如果仍然打不开，依次检查：
+
+- SSH 是否能正常登录部署机
+- 部署机上 `admin-portal` 是否已启动
+- `ADMIN_PORTAL_PORT` 是否与 `.env` 中一致
+- 是否误把浏览器地址写成了服务器公网 IP
+
+部署机上可执行：
+
+```bash
+docker compose --env-file .env ps
+docker compose --env-file .env logs --tail=100 admin-portal
+ss -lntp | grep 8080
+```
+
 ## 原生 L2TP 客户端无法连接
 
 先检查：

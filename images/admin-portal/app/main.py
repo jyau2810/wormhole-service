@@ -18,6 +18,7 @@ from .analytics import refresh_account_events
 from .db import transaction, wait_for_db
 from .logging_setup import configure_logging, request_id_var
 from .radius_sync import effective_radius_expiration, format_radius_expiration, nt_password_hash, to_utc_naive_end_of_day
+from .schema import ensure_admin_schema
 from .security import hash_admin_password, verify_admin_password
 from .settings import Settings, load_settings
 
@@ -380,6 +381,7 @@ def load_account_detail(account_id: int):
 def startup() -> None:
     logger.info("startup_begin")
     wait_for_db(settings)
+    ensure_admin_schema(settings)
     bootstrap_admin()
     ensure_speed_profiles()
     refresh_account_events(settings)
