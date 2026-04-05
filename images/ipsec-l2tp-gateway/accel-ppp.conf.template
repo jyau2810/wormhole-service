@@ -18,8 +18,11 @@ color=0
 [l2tp]
 bind=0.0.0.0
 port=${VPN_L2TP_PORT}
+verbose=1
 hello-interval=60
 timeout=60
+use-ephemeral-ports=0
+avp_permissive=1
 
 [ppp]
 verbose=1
