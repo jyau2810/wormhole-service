@@ -27,6 +27,7 @@ sql {
     read_profiles = no
     delete_stale_sessions = yes
     auto_escape = yes
+    sql_user_name = "%{User-Name}"
 
     pool {
         start = 1
