@@ -225,6 +225,7 @@ cp .env.example .env
 
 - 默认值：`10.88.0.0`
 - 用途：VPN 客户端地址池网段。
+- 补充：`ipsec-l2tp-gateway` 会基于它和 `VPN_NETMASK`、`VPN_GATEWAY_IP` 自动生成 `accel-ppp` 的客户端地址池，并自动排除网关地址。
 - 建议：避免与办公网、宿主机局域网或常见家庭网段冲突。
 
 ### `VPN_NETMASK`
@@ -237,6 +238,7 @@ cp .env.example .env
 
 - 默认值：`10.88.0.1`
 - 用途：分配给客户端的 PPP 网关地址。
+- 补充：该地址会从 `accel-ppp` 客户端地址池中自动排除，不能与客户端分配范围重叠。
 - 建议：应位于 `VPN_NETWORK` 对应网段内。
 
 ### `VPN_DNS_1`

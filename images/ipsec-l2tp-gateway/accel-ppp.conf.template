@@ -24,6 +24,7 @@ hello-interval=60
 timeout=60
 use-ephemeral-ports=0
 avp_permissive=1
+ip-pool=wormhole-vpn4
 
 [ppp]
 verbose=1
@@ -34,9 +35,12 @@ ipv4=require
 mppe=prefer
 auth=mschap-v2
 
+[client-ip-range]
+0.0.0.0/0
+
 [ip-pool]
 gw-ip-address=${VPN_GATEWAY_IP}
-tunnel-ipv4-pool=${VPN_NETWORK}/${VPN_NETMASK}
+${VPN_REMOTE_IP_POOL_LINES}
 
 [radius]
 dictionary=/usr/share/accel-ppp/radius/dictionary
@@ -53,7 +57,8 @@ dns1=${VPN_DNS_1}
 dns2=${VPN_DNS_2}
 
 [shaper]
-vendor=custom
-attr=Filter-Id
-up-limiter=WISPr-Bandwidth-Max-Up
-down-limiter=WISPr-Bandwidth-Max-Down
+attr-up=WISPr-Bandwidth-Max-Up
+attr-down=WISPr-Bandwidth-Max-Down
+up-limiter=police
+down-limiter=tbf
+rate-multiplier=0.001

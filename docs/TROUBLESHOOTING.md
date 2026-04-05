@@ -87,6 +87,8 @@ docker compose logs --tail=100 freeradius
 - 如果 `ipsec statusall` 和 `ip xfrm` 中没有活动 SA，优先检查 `strongSwan` 协商、PSK 和客户端协议参数
 - 如果 `IPSec` 成功但 `PPP/L2TP` 没有建立，优先检查 `accel-ppp`、`/dev/ppp`、`var/log/gateway/accel-ppp.log`、`var/log/gateway/charon.log` 和网关配置
 - 如果开始进入认证阶段但被拒绝，转到“账号存在但认证被拒绝”
+- 如果 `accel-ppp.log` 出现 `no IP address range defined in section [client-ip-range]` 或 `IP address is out of client-ip-range`，说明 L2TP 源地址白名单未正确生效
+- 如果 `accel-ppp.log` 出现 `unknown upstream limiter` 或 `unknown downstream limiter`，优先检查 `[shaper]` 是否把 RADIUS 属性名误写成了 limiter 方法名
 
 ## 账号存在但认证被拒绝
 
