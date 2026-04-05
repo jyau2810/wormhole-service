@@ -1,0 +1,18 @@
+charon {
+    filelog {
+        /var/log/wormhole/gateway/charon.log {
+            time_format = %b %e %T
+            ike_name = yes
+            append = no
+            flush_line = yes
+            default = 2
+            ike = 3
+            cfg = 3
+            net = 3
+            knl = 3
+            esp = 3
+            enc = 2
+            chd = 2
+        }
+    }
+}

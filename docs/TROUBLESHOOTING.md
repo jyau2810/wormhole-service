@@ -19,6 +19,7 @@ docker compose logs --tail=100 admin-portal
 docker compose exec ipsec-l2tp-gateway ipsec statusall
 docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
 tail -n 100 var/log/gateway/accel-ppp.log
+tail -n 100 var/log/gateway/charon.log
 docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius
 ```
 
@@ -76,6 +77,7 @@ docker compose logs --tail=100 ipsec-l2tp-gateway
 docker compose exec ipsec-l2tp-gateway ipsec statusall
 docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
 tail -n 100 var/log/gateway/accel-ppp.log
+tail -n 100 var/log/gateway/charon.log
 docker compose logs --tail=100 freeradius
 ```
 
@@ -83,7 +85,7 @@ docker compose logs --tail=100 freeradius
 
 - 如果 `ipsec-l2tp-gateway` 没有握手相关日志，优先检查端口放行和公网地址
 - 如果 `ipsec statusall` 和 `ip xfrm` 中没有活动 SA，优先检查 `strongSwan` 协商、PSK 和客户端协议参数
-- 如果 `IPSec` 成功但 `PPP/L2TP` 没有建立，优先检查 `accel-ppp`、`/dev/ppp`、`var/log/gateway/accel-ppp.log` 和网关配置
+- 如果 `IPSec` 成功但 `PPP/L2TP` 没有建立，优先检查 `accel-ppp`、`/dev/ppp`、`var/log/gateway/accel-ppp.log`、`var/log/gateway/charon.log` 和网关配置
 - 如果开始进入认证阶段但被拒绝，转到“账号存在但认证被拒绝”
 
 ## 账号存在但认证被拒绝
@@ -135,6 +137,7 @@ docker compose logs --tail=200 freeradius
 docker compose logs --tail=100 ipsec-l2tp-gateway
 docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
 tail -n 100 var/log/gateway/accel-ppp.log
+tail -n 100 var/log/gateway/charon.log
 docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius -e \
   "SELECT username, acctstarttime, acctstoptime, acctinputoctets, acctoutputoctets FROM radacct ORDER BY radacctid DESC LIMIT 20;"
 ```

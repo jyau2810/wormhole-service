@@ -51,6 +51,7 @@ RUN apt-get update \
 COPY entrypoint.sh /opt/wormhole/entrypoint.sh
 COPY accel-ppp.conf.template /opt/wormhole/accel-ppp.conf.template
 COPY ipsec.conf.template /opt/wormhole/ipsec.conf.template
+COPY strongswan.conf.template /opt/wormhole/strongswan.conf.template
 RUN chmod +x /opt/wormhole/entrypoint.sh
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/opt/wormhole/entrypoint.sh"]

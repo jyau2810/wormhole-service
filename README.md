@@ -151,6 +151,7 @@ docker compose logs --tail=50 ipsec-l2tp-gateway
 docker compose exec ipsec-l2tp-gateway ipsec statusall
 docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
 tail -n 50 var/log/gateway/accel-ppp.log
+tail -n 50 var/log/gateway/charon.log
 docker compose logs --tail=50 admin-portal
 ```
 
@@ -248,6 +249,7 @@ docker compose exec ipsec-l2tp-gateway ipsec statusall
 docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
 ss -lunp | grep -E ':(500|4500|1701|1812|1813)\s'
 tail -f var/log/gateway/accel-ppp.log
+tail -f var/log/gateway/charon.log
 docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius
 ```
 
