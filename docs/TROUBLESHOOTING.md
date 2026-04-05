@@ -12,9 +12,13 @@
 
 ```bash
 docker compose ps
+ss -lunp | grep -E ':(500|4500|1701|1812|1813)\s'
 docker compose logs --tail=100 ipsec-l2tp-gateway
 docker compose logs --tail=100 freeradius
 docker compose logs --tail=100 admin-portal
+docker compose exec ipsec-l2tp-gateway ipsec statusall
+docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
+tail -n 100 var/log/gateway/accel-ppp.log
 docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius
 ```
 
@@ -57,22 +61,29 @@ ss -lntp | grep 8080
 先检查：
 
 - 宿主机是否放行 `500/udp`、`4500/udp`、`1701/udp`
+- 宿主机本地 `1812/udp`、`1813/udp` 是否未被其他服务占用
 - `/dev/net/tun` 和 `/dev/ppp` 是否可用
 - 宿主机是否已开启 `net.ipv4.ip_forward=1`
 - 客户端填写的 `VPN_SHARED_PSK` 是否正确
 - `VPN_GATEWAYS` 中下发的地址是否为真实公网接入点
+- `freeradius` 是否已经绑定在 `127.0.0.1:${VPN_RADIUS_AUTH_PORT}` 和 `127.0.0.1:${VPN_RADIUS_ACCT_PORT}`
 
 再查看：
 
 ```bash
+ss -lunp | grep -E ':(500|4500|1701|1812|1813)\s'
 docker compose logs --tail=100 ipsec-l2tp-gateway
+docker compose exec ipsec-l2tp-gateway ipsec statusall
+docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
+tail -n 100 var/log/gateway/accel-ppp.log
 docker compose logs --tail=100 freeradius
 ```
 
 排查思路：
 
 - 如果 `ipsec-l2tp-gateway` 没有握手相关日志，优先检查端口放行和公网地址
-- 如果 `IPSec` 成功但 `PPP/L2TP` 没有建立，优先检查 `accel-ppp`、`/dev/ppp` 和网关配置
+- 如果 `ipsec statusall` 和 `ip xfrm` 中没有活动 SA，优先检查 `strongSwan` 协商、PSK 和客户端协议参数
+- 如果 `IPSec` 成功但 `PPP/L2TP` 没有建立，优先检查 `accel-ppp`、`/dev/ppp`、`var/log/gateway/accel-ppp.log` 和网关配置
 - 如果开始进入认证阶段但被拒绝，转到“账号存在但认证被拒绝”
 
 ## 账号存在但认证被拒绝
@@ -122,6 +133,8 @@ docker compose logs --tail=200 freeradius
 
 ```bash
 docker compose logs --tail=100 ipsec-l2tp-gateway
+docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
+tail -n 100 var/log/gateway/accel-ppp.log
 docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius -e \
   "SELECT username, acctstarttime, acctstoptime, acctinputoctets, acctoutputoctets FROM radacct ORDER BY radacctid DESC LIMIT 20;"
 ```

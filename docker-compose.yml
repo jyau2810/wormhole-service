@@ -47,6 +47,9 @@ services:
       LOG_DIR_ROOT: ${LOG_DIR_ROOT}
     volumes:
       - ./var/log:${LOG_DIR_ROOT}
+    ports:
+      - "127.0.0.1:${VPN_RADIUS_AUTH_PORT}:${VPN_RADIUS_AUTH_PORT}/udp"
+      - "127.0.0.1:${VPN_RADIUS_ACCT_PORT}:${VPN_RADIUS_ACCT_PORT}/udp"
     healthcheck:
       test:
         [
@@ -105,6 +108,9 @@ services:
     depends_on:
       freeradius:
         condition: service_healthy
+    # L2TP/IPSec transport mode is sensitive to NAT; run on the host network
+    # instead of Docker bridge port mapping so inner L2TP traffic reaches PPP.
+    network_mode: host
     cap_add:
       - NET_ADMIN
     devices:
@@ -123,7 +129,7 @@ services:
       VPN_DNS_2: ${VPN_DNS_2}
       VPN_MTU: ${VPN_MTU}
       VPN_NAT_DEVICE: ${VPN_NAT_DEVICE}
-      VPN_RADIUS_HOST: freeradius
+      VPN_RADIUS_HOST: 127.0.0.1
       VPN_RADIUS_AUTH_PORT: ${VPN_RADIUS_AUTH_PORT}
       VPN_RADIUS_ACCT_PORT: ${VPN_RADIUS_ACCT_PORT}
       VPN_NAS_IDENTIFIER: ${VPN_NAS_IDENTIFIER}
@@ -132,10 +138,6 @@ services:
       LOG_DIR_ROOT: ${LOG_DIR_ROOT}
     volumes:
       - ./var/log:${LOG_DIR_ROOT}
-    ports:
-      - "${VPN_IPSEC_IKE_PORT}:${VPN_IPSEC_IKE_PORT}/udp"
-      - "${VPN_IPSEC_NATT_PORT}:${VPN_IPSEC_NATT_PORT}/udp"
-      - "${VPN_L2TP_PORT}:${VPN_L2TP_PORT}/udp"
     healthcheck:
       test: ["CMD-SHELL", "pgrep -x accel-pppd >/dev/null && pgrep -f '/usr/lib/ipsec/starter|charon' >/dev/null"]
       interval: 10s

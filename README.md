@@ -46,9 +46,11 @@
 
 - `Docker 26+`
 - `Docker Compose` 插件
+- Linux 宿主机可用 `host network`
 - `/dev/net/tun` 可用
 - `/dev/ppp` 可用
 - 公网已放行 `500/udp`、`4500/udp`、`1701/udp`
+- 宿主机本地 `1812/udp`、`1813/udp` 未被其他服务占用
 
 可先执行：
 
@@ -114,6 +116,17 @@ cp .env.example .env
 
 如果宿主机外网口不是 `eth0`，同步修改 `VPN_NAT_DEVICE`。
 
+### 网关网络模式说明
+
+`ipsec-l2tp-gateway` 默认使用宿主机网络而不是 Docker bridge 端口映射。
+
+- 客户端连接方式不变，仍然使用原生 `L2TP/IPSec PSK`
+- `VPN_GATEWAYS`、共享密钥、账号密码、DNS 和后台导出内容都无需修改
+- 这样做是为了避免 `NAT-T + IPsec transport mode` 下内层 `L2TP` 流量无法稳定进入 `PPP`
+- 对应地，`freeradius` 会仅在部署机回环地址开放 `1812/udp` 和 `1813/udp`，供网关通过 `127.0.0.1` 访问
+
+这套完整 VPN 数据面部署以 Linux 宿主机为目标；`macOS` 本机联调仍建议只跑控制平面服务。
+
 ### 启动服务
 
 ```bash
@@ -132,8 +145,12 @@ docker compose --env-file .env up -d --build
 
 ```bash
 docker compose ps
+ss -lunp | grep -E ':(500|4500|1701|1812|1813)\s'
 docker compose logs --tail=50 freeradius
 docker compose logs --tail=50 ipsec-l2tp-gateway
+docker compose exec ipsec-l2tp-gateway ipsec statusall
+docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
+tail -n 50 var/log/gateway/accel-ppp.log
 docker compose logs --tail=50 admin-portal
 ```
 
@@ -227,6 +244,10 @@ make local-down
 docker compose logs -f admin-portal
 docker compose logs -f freeradius
 docker compose logs -f ipsec-l2tp-gateway
+docker compose exec ipsec-l2tp-gateway ipsec statusall
+docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
+ss -lunp | grep -E ':(500|4500|1701|1812|1813)\s'
+tail -f var/log/gateway/accel-ppp.log
 docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius
 ```
 
