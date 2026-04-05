@@ -4,7 +4,7 @@ set -eu
 mkdir -p /etc/accel-ppp /etc /var/run /var/log/accel-ppp "${LOG_DIR_ROOT}/gateway"
 mkdir -p /etc/strongswan.d
 
-envsubst '${VPN_NETWORK} ${VPN_NETMASK} ${VPN_GATEWAY_IP} ${VPN_DNS_1} ${VPN_DNS_2} ${VPN_MTU} ${VPN_RADIUS_HOST} ${VPN_RADIUS_AUTH_PORT} ${VPN_RADIUS_ACCT_PORT} ${RADIUS_SHARED_SECRET} ${VPN_NAS_IDENTIFIER} ${VPN_NAS_IP_ADDRESS} ${VPN_L2TP_PORT}' \
+envsubst '${LOG_DIR_ROOT} ${VPN_NETWORK} ${VPN_NETMASK} ${VPN_GATEWAY_IP} ${VPN_DNS_1} ${VPN_DNS_2} ${VPN_MTU} ${VPN_RADIUS_HOST} ${VPN_RADIUS_AUTH_PORT} ${VPN_RADIUS_ACCT_PORT} ${RADIUS_SHARED_SECRET} ${VPN_NAS_IDENTIFIER} ${VPN_NAS_IP_ADDRESS} ${VPN_L2TP_PORT}' \
     < /opt/wormhole/accel-ppp.conf.template > /etc/accel-ppp/accel-ppp.conf
 envsubst '${VPN_IPSEC_IKE_PORT} ${VPN_IPSEC_NATT_PORT}' \
     < /opt/wormhole/ipsec.conf.template > /etc/ipsec.conf
@@ -13,7 +13,8 @@ cat > /etc/ipsec.secrets <<EOF
 : PSK "${VPN_SHARED_PSK}"
 EOF
 touch /var/log/accel-ppp/accel-ppp.log /var/log/accel-ppp/core.log \
-    "${LOG_DIR_ROOT}/gateway/accel-ppp.log" "${LOG_DIR_ROOT}/gateway/charon.log"
+    "${LOG_DIR_ROOT}/gateway/accel-ppp.log" "${LOG_DIR_ROOT}/gateway/accel-ppp-core.log" \
+    "${LOG_DIR_ROOT}/gateway/charon.log"
 
 netmask_to_prefix() {
     python3 - <<'PY'
@@ -36,4 +37,6 @@ ipsec start
 accel-pppd -d -c /etc/accel-ppp/accel-ppp.conf >> "${LOG_DIR_ROOT}/gateway/accel-ppp.log" 2>&1 &
 
 trap 'ipsec stop; killall accel-pppd 2>/dev/null || true' INT TERM
-tail -F "${LOG_DIR_ROOT}/gateway/accel-ppp.log" "${LOG_DIR_ROOT}/gateway/charon.log"
+tail -F "${LOG_DIR_ROOT}/gateway/accel-ppp.log" \
+    "${LOG_DIR_ROOT}/gateway/accel-ppp-core.log" \
+    "${LOG_DIR_ROOT}/gateway/charon.log"

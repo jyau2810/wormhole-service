@@ -7,13 +7,14 @@ ippool
 shaper
 
 [core]
-log-error=/var/log/accel-ppp/core.log
+log-error=${LOG_DIR_ROOT}/gateway/accel-ppp-core.log
 thread-count=2
 
 [log]
-log-file=/var/log/accel-ppp/accel-ppp.log
+log-file=${LOG_DIR_ROOT}/gateway/accel-ppp.log
 copy=1
 color=0
+level=5
 
 [l2tp]
 bind=0.0.0.0
