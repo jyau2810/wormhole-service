@@ -7,6 +7,7 @@ conn wormhole-l2tp
     authby=psk
     type=transport
     left=%any
+${VPN_IPSEC_LOCAL_ID_LINE}
     leftprotoport=17/1701
     right=%any
     rightprotoport=17/%any

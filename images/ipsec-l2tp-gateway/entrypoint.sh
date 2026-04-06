@@ -54,9 +54,15 @@ PY
 VPN_REMOTE_IP_POOL_LINES="$(render_remote_ip_pool_lines)"
 export VPN_REMOTE_IP_POOL_LINES
 
+VPN_IPSEC_LOCAL_ID_LINE=""
+if [ -n "${VPN_IPSEC_LOCAL_ID:-}" ]; then
+    VPN_IPSEC_LOCAL_ID_LINE="    leftid=${VPN_IPSEC_LOCAL_ID}"
+fi
+export VPN_IPSEC_LOCAL_ID_LINE
+
 envsubst '${LOG_DIR_ROOT} ${VPN_GATEWAY_IP} ${VPN_REMOTE_IP_POOL_LINES} ${VPN_DNS_1} ${VPN_DNS_2} ${VPN_MTU} ${VPN_RADIUS_HOST} ${VPN_RADIUS_AUTH_PORT} ${VPN_RADIUS_ACCT_PORT} ${RADIUS_SHARED_SECRET} ${VPN_NAS_IDENTIFIER} ${VPN_NAS_IP_ADDRESS} ${VPN_L2TP_PORT}' \
     < /opt/wormhole/accel-ppp.conf.template > /etc/accel-ppp/accel-ppp.conf
-envsubst '${VPN_IPSEC_IKE_PORT} ${VPN_IPSEC_NATT_PORT}' \
+envsubst '${VPN_IPSEC_IKE_PORT} ${VPN_IPSEC_NATT_PORT} ${VPN_IPSEC_LOCAL_ID_LINE}' \
     < /opt/wormhole/ipsec.conf.template > /etc/ipsec.conf
 cat /opt/wormhole/strongswan.conf.template > /etc/strongswan.d/charon-logging.conf
 cat > /etc/ipsec.secrets <<EOF

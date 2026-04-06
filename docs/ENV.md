@@ -191,6 +191,13 @@ cp .env.example .env
 - 用途：`strongSwan` 使用的 NAT-T UDP 端口。
 - 建议：一般保持默认。
 
+### `VPN_IPSEC_LOCAL_ID`
+
+- 默认值：空
+- 用途：显式指定 `strongSwan` 在 IKEv1 主模式里对外声明的本端身份。
+- 建议：如果部署机只有内网地址、通过公网 EIP/NAT 对外提供服务，这里应设置为客户端实际连接的公网 IP 或域名。
+- 常见问题：不设置时，`strongSwan` 可能使用宿主机内网 IP 作为本端身份；某些原生 `L2TP/IPSec PSK` 客户端会在首次可用后、断线重连时卡在 IKE 第 1 阶段最后一步。
+
 ### `VPN_L2TP_PORT`
 
 - 默认值：`1701`
