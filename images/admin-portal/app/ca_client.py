@@ -50,3 +50,11 @@ class CAClient:
             filename = disposition.split("filename=")[-1].strip('"')
         return filename, response.content
 
+    def download_ca_certificate(self) -> bytes:
+        response = httpx.get(
+            f"{self.base_url}/internal/certificates/ca",
+            headers=self.headers,
+            timeout=30.0,
+        )
+        response.raise_for_status()
+        return response.content

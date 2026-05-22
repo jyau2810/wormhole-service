@@ -15,9 +15,12 @@ cp .env.example .env
 - `RADIUS_SHARED_SECRET`
 - `ADMIN_PASSWORD`
 - `ADMIN_SESSION_SECRET`
+- `CA_API_TOKEN`
+- `VPN_SERVER_HOST`
 - `VPN_SHARED_PSK`
 - `VPN_GATEWAYS`
 - `VPN_NAT_DEVICE`
+- `OCSERV_NAT_DEVICE`
 
 ## 通用与日志
 
@@ -129,6 +132,57 @@ cp .env.example .env
 - 必改：是
 - 建议：至少使用 32 位随机字符串。
 
+## 内部 CA 与服务端证书
+
+### `CA_API_TOKEN`
+
+- 默认值：`change-me-ca-api-token`
+- 用途：后台调用 `ca-api` 内部接口时使用的 Bearer Token。
+- 必改：是
+
+### `CA_COMMON_NAME`
+
+- 默认值：`Wormhole VPN Internal CA`
+- 用途：内部 CA 证书的 Common Name。
+- 建议：单机自用可保持默认。
+
+### `CA_ORGANIZATION`
+
+- 默认值：`Wormhole VPN`
+- 用途：内部 CA 和服务端证书的组织名字段。
+
+### `CA_VALIDITY_DAYS`
+
+- 默认值：`3650`
+- 用途：内部 CA 有效期天数。
+
+### `SERVER_CERT_VALIDITY_DAYS`
+
+- 默认值：`825`
+- 用途：SSL VPN 服务端证书有效期天数。
+
+### `CLIENT_CERT_VALIDITY_DAYS`
+
+- 默认值：`365`
+- 用途：保留给客户端证书签发能力的有效期天数；v1 UniConnect 接入不要求客户端证书。
+
+### `VPN_SERVER_HOST`
+
+- 默认值：`vpn.example.com`
+- 用途：SSL VPN 服务端证书的主机名，也是未配置 `VPN_GATEWAYS` 时的默认接入域名。
+- 必改：是
+- 建议：填写 UniConnect 客户端实际连接的公网域名或 IP。
+
+### `VPN_SERVER_ALT_NAMES`
+
+- 默认值：空
+- 用途：额外写入 SSL VPN 服务端证书 SAN 的域名或 IP，多个值用英文逗号分隔。
+
+### `P12_EXPORT_PASSWORD`
+
+- 默认值：空
+- 用途：保留给客户端证书包导出；v1 UniConnect 账号密码接入可保持为空。
+
 ## VPN 业务默认值
 
 ### `VPN_SHARED_PSK`
@@ -159,15 +213,15 @@ cp .env.example .env
 示例：
 
 ```json
-[{"name":"primary","address":"203.0.113.10","protocol":"l2tp-ipsec-psk","port":1701,"priority":1,"notes":"primary gateway"}]
+[{"name":"android-uniconnect","address":"vpn.example.com","protocol":"openconnect-ssl","port":443,"priority":1,"notes":"UniConnect / Android 12+"},{"name":"primary","address":"203.0.113.10","protocol":"l2tp-ipsec-psk","port":1701,"priority":2,"notes":"primary gateway"}]
 ```
 
 字段说明：
 
 - `name`：接入点名称
 - `address`：客户端实际连接的公网地址或域名
-- `protocol`：当前应填写 `l2tp-ipsec-psk`
-- `port`：接入端口，通常为 `1701`
+- `protocol`：`l2tp-ipsec-psk` 或 `openconnect-ssl`
+- `port`：`l2tp-ipsec-psk` 通常为 `1701`，`openconnect-ssl` 默认 `443`
 - `priority`：排序优先级，数值越小越靠前
 - `notes`：备注信息
 
@@ -273,6 +327,85 @@ cp .env.example .env
 - 必查：是
 - 常见问题：配置错误时最常见现象是“能连接，但没有流量”。
 
+## UniConnect / SSL VPN 网络与协议
+
+### `OCSERV_TCP_PORT`
+
+- 默认值：`443`
+- 用途：`uniconnect-gateway` 对外提供 SSL VPN TCP 接入的端口。
+
+### `OCSERV_UDP_PORT`
+
+- 默认值：`443`
+- 用途：`uniconnect-gateway` 对外提供 DTLS/UDP 加速接入的端口。
+
+### `OCSERV_NETWORK`
+
+- 默认值：`10.89.0.0`
+- 用途：UniConnect/SSL VPN 客户端地址池网段。
+- 建议：与 `VPN_NETWORK`、办公网和宿主机局域网错开。
+
+### `OCSERV_NETMASK`
+
+- 默认值：`255.255.255.0`
+- 用途：UniConnect/SSL VPN 客户端地址池掩码。
+
+### `OCSERV_MAX_CLIENTS`
+
+- 默认值：`64`
+- 用途：`ocserv` 全局最大客户端连接数。
+
+### `OCSERV_MAX_SAME_CLIENTS`
+
+- 默认值：`2`
+- 用途：没有生成用户级配置时，同一账号默认允许的并发连接数；后台会为新账号写入用户级并发配置。
+
+### `OCSERV_DNS_1`
+
+- 默认值：`1.1.1.1`
+- 用途：UniConnect/SSL VPN 下发给客户端的主 DNS。
+
+### `OCSERV_DNS_2`
+
+- 默认值：`8.8.8.8`
+- 用途：UniConnect/SSL VPN 下发给客户端的备用 DNS。
+
+### `OCSERV_IDLE_TIMEOUT`
+
+- 默认值：`1200`
+- 用途：普通客户端空闲超时时间，单位秒。
+
+### `OCSERV_MOBILE_IDLE_TIMEOUT`
+
+- 默认值：`1800`
+- 用途：移动客户端空闲超时时间，单位秒。
+
+### `OCSERV_SESSION_TIMEOUT`
+
+- 默认值：`86400`
+- 用途：单次 SSL VPN 会话最长时间，单位秒。
+
+### `OCSERV_STATS_REPORT_TIME`
+
+- 默认值：`60`
+- 用途：`ocserv` 统计和记账上报间隔，单位秒。
+
+### `OCSERV_DEFAULT_DOMAIN`
+
+- 默认值：空
+- 用途：可选的默认搜索域；为空时不写入 `ocserv` 配置。
+
+### `OCSERV_NAT_DEVICE`
+
+- 默认值：`eth0`
+- 用途：`uniconnect-gateway` 容器内用于 NAT 的出口网卡。
+- 必查：是
+
+### `OCSERV_NAS_IDENTIFIER`
+
+- 默认值：`wormhole-uniconnect`
+- 用途：UniConnect/SSL VPN 侧写入 RADIUS 记录的 NAS 标识。
+
 ## 推荐最小修改集
 
 ```dotenv
@@ -281,9 +414,12 @@ MARIADB_ROOT_PASSWORD=另一组随机强密码
 RADIUS_SHARED_SECRET=随机强密钥
 ADMIN_PASSWORD=强密码
 ADMIN_SESSION_SECRET=长度至少32位的随机字符串
+CA_API_TOKEN=随机强密钥
+VPN_SERVER_HOST=你的公网域名或IP
 VPN_SHARED_PSK=客户端共享密钥
-VPN_GATEWAYS=[{"name":"primary","address":"你的公网IP或域名","protocol":"l2tp-ipsec-psk","port":1701,"priority":1,"notes":"primary"}]
+VPN_GATEWAYS=[{"name":"android-uniconnect","address":"你的公网IP或域名","protocol":"openconnect-ssl","port":443,"priority":1,"notes":"UniConnect / Android 12+"},{"name":"primary","address":"你的公网IP或域名","protocol":"l2tp-ipsec-psk","port":1701,"priority":2,"notes":"primary"}]
 VPN_NAT_DEVICE=你的实际出口网卡名
+OCSERV_NAT_DEVICE=你的实际出口网卡名
 ```
 
 ## 常见误配
@@ -292,4 +428,6 @@ VPN_NAT_DEVICE=你的实际出口网卡名
 - `VPN_GATEWAYS` JSON 格式错误，或里面填的是内网地址
 - `RADIUS_SHARED_SECRET` 两端不一致
 - `VPN_NAT_DEVICE` 不是实际出口网卡
+- `OCSERV_NAT_DEVICE` 不是 UniConnect 网关容器内实际出口网卡
+- `VPN_SERVER_HOST` 与客户端连接地址不一致，导致自签服务端证书校验失败
 - VPN 地址池与现有网络冲突

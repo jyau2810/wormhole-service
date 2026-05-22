@@ -96,3 +96,19 @@ def effective_radius_expiration(status: str, expiration_at: datetime) -> datetim
     if status == "enabled":
         return expiration_at
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def radius_check_rows(
+    username: str,
+    password: str,
+    status: str,
+    expiration_at: datetime,
+    max_concurrent_sessions: int,
+) -> list[tuple[str, str, str]]:
+    effective = effective_radius_expiration(status, expiration_at)
+    return [
+        (username, "NT-Password", nt_password_hash(password)),
+        (username, "Cleartext-Password", password),
+        (username, "Expiration", format_radius_expiration(effective)),
+        (username, "Simultaneous-Use", str(max_concurrent_sessions)),
+    ]

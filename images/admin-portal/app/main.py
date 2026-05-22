@@ -9,15 +9,18 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from .analytics import refresh_account_events
+from .ca_client import CAClient
+from .connection_config import build_connection_config
 from .db import transaction, wait_for_db
 from .logging_setup import configure_logging, request_id_var
-from .radius_sync import effective_radius_expiration, format_radius_expiration, nt_password_hash, to_utc_naive_end_of_day
+from .ocserv_policy import sync_ocserv_user_policy, validate_ocserv_username
+from .radius_sync import radius_check_rows, to_utc_naive_end_of_day
 from .schema import ensure_admin_schema
 from .security import hash_admin_password, verify_admin_password
 from .settings import Settings, load_settings
@@ -105,8 +108,9 @@ PLATFORM_GUIDES = {
         "title": "Android",
         "steps": [
             "Android 12 以下优先使用系统 L2TP/IPSec PSK。",
-            "Android 12 及以上预留 UniConnect SSL VPN 接入，后续可直接复用同一套账号体系。",
-            "当前仓库导出的网关配置会同时标注原生 L2TP 接入点和预留 SSL 网关信息。",
+            "Android 12 及以上使用 UniConnect，协议选择 SSL VPN / OpenConnect 兼容模式。",
+            "服务器地址使用 openconnect-ssl 接入点，端口默认 443，用户名和密码使用本系统中的 VPN 账号。",
+            "如客户端提示证书不受信任，先从账号连接配置页下载 Wormhole CA 证书并在系统中信任。",
         ],
     },
 }
@@ -144,7 +148,7 @@ def sync_radius_rows(
     cursor.execute(
         """
         DELETE FROM radcheck
-        WHERE username = %s AND attribute IN ('NT-Password', 'Expiration', 'Simultaneous-Use')
+        WHERE username = %s AND attribute IN ('NT-Password', 'Cleartext-Password', 'Expiration', 'Simultaneous-Use')
         """,
         (username,),
     )
@@ -156,14 +160,9 @@ def sync_radius_rows(
         """,
         (username,),
     )
-    effective = effective_radius_expiration(status, expiration_at)
     cursor.executemany(
         "INSERT INTO radcheck (username, attribute, op, value) VALUES (%s, %s, ':=', %s)",
-        [
-            (username, "NT-Password", nt_password_hash(password)),
-            (username, "Expiration", format_radius_expiration(effective)),
-            (username, "Simultaneous-Use", str(max_concurrent_sessions)),
-        ],
+        radius_check_rows(username, password, status, expiration_at, max_concurrent_sessions),
     )
     cursor.executemany(
         "INSERT INTO radreply (username, attribute, op, value) VALUES (%s, %s, '=', %s)",
@@ -173,6 +172,15 @@ def sync_radius_rows(
             (username, "WISPr-Bandwidth-Max-Down", str(speed_profile["max_down_kbps"] * 1000)),
         ],
     )
+    try:
+        sync_ocserv_user_policy(
+            settings.ocserv_config_per_user_dir,
+            username,
+            speed_profile,
+            max_concurrent_sessions,
+        )
+    except ValueError as exc:
+        logger.warning("ocserv_policy_skipped username=%s reason=%s", username, exc)
 
 
 def bootstrap_admin() -> None:
@@ -460,6 +468,11 @@ def create_account(
     redirect = require_login(request)
     if redirect:
         return redirect
+    try:
+        validate_ocserv_username(username)
+    except ValueError as exc:
+        flash(request, "error", f"Invalid username: {exc}")
+        return RedirectResponse(url="/accounts", status_code=303)
     expiration_at = parse_account_date(expiration_date)
     try:
         with transaction(settings) as connection:
@@ -733,32 +746,26 @@ def connection_config(request: Request, account_id: int):
             account = cursor.fetchone()
     if not account:
         return JSONResponse(status_code=404, content={"detail": "account not found"})
-    return {
-        "account": {
-            "username": account["username"],
-            "status": account["status"],
-            "speed_profile": account["display_name"],
-            "max_concurrent_sessions": account["max_concurrent_sessions"],
-        },
-        "native_l2tp_ipsec": {
-            "shared_psk": settings.vpn_shared_psk,
-            "gateways": [
-                {
-                    "name": gateway.name,
-                    "address": gateway.address,
-                    "protocol": gateway.protocol,
-                    "port": gateway.port,
-                    "priority": gateway.priority,
-                    "notes": gateway.notes,
-                }
-                for gateway in settings.vpn_gateways
-            ],
-        },
-        "future_ssl_gateway": {
-            "uniconnect_ready": True,
-            "status": "reserved",
-        },
-    }
+    return build_connection_config(
+        account=account,
+        gateways=settings.vpn_gateways,
+        vpn_shared_psk=settings.vpn_shared_psk,
+        ca_certificate_url=str(request.url_for("download_ca_certificate")),
+    )
+
+
+@app.get("/ca-certificates/root")
+def download_ca_certificate(request: Request):
+    redirect = require_login(request)
+    if redirect:
+        return redirect
+    try:
+        payload = CAClient(settings).download_ca_certificate()
+    except Exception:
+        logger.exception("ca_certificate_proxy_failed")
+        return JSONResponse(status_code=502, content={"detail": "failed to fetch CA certificate"})
+    headers = {"Content-Disposition": 'attachment; filename="wormhole-ca-cert.pem"'}
+    return Response(content=payload, media_type="application/x-pem-file", headers=headers)
 
 
 @app.get("/guides/{platform}", response_class=HTMLResponse)

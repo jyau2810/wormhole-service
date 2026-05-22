@@ -1,9 +1,8 @@
-auth = "certificate"
 auth = "radius[config=/etc/radiusclient/radiusclient.conf,groupconfig=false]"
 acct = "radius[config=/etc/radiusclient/radiusclient.conf]"
 
-tcp-port = __VPN_TCP_PORT__
-udp-port = __VPN_UDP_PORT__
+tcp-port = __OCSERV_TCP_PORT__
+udp-port = __OCSERV_UDP_PORT__
 socket-file = /var/run/occtl.socket
 use-occtl = true
 
@@ -14,13 +13,10 @@ pid-file = /var/run/ocserv.pid
 
 server-cert = /srv/pki/server/server-cert.pem
 server-key = /srv/pki/server/server-key.pem
-ca-cert = /srv/pki/ca/ca-cert.pem
-crl = /srv/pki/ca/crl.pem
-cert-user-oid = 0.9.2342.19200300.100.1.1
 
 isolate-workers = false
-max-clients = __VPN_MAX_CLIENTS__
-max-same-clients = 2
+max-clients = __OCSERV_MAX_CLIENTS__
+max-same-clients = __OCSERV_MAX_SAME_CLIENTS__
 keepalive = 32400
 dpd = 90
 mobile-dpd = 1800
@@ -28,19 +24,20 @@ switch-to-tcp-timeout = 25
 try-mtu-discovery = true
 
 auth-timeout = 240
-idle-timeout = __VPN_IDLE_TIMEOUT__
-mobile-idle-timeout = __VPN_MOBILE_IDLE_TIMEOUT__
-session-timeout = __VPN_SESSION_TIMEOUT__
-stats-report-time = __VPN_STATS_REPORT_TIME__
+idle-timeout = __OCSERV_IDLE_TIMEOUT__
+mobile-idle-timeout = __OCSERV_MOBILE_IDLE_TIMEOUT__
+session-timeout = __OCSERV_SESSION_TIMEOUT__
+stats-report-time = __OCSERV_STATS_REPORT_TIME__
 
-ipv4-network = __VPN_NETWORK__
-ipv4-netmask = __VPN_NETMASK__
+ipv4-network = __OCSERV_NETWORK__
+ipv4-netmask = __OCSERV_NETMASK__
 tunnel-all-dns = true
-dns = __VPN_DNS_1__
-dns = __VPN_DNS_2__
+dns = __OCSERV_DNS_1__
+dns = __OCSERV_DNS_2__
 route = default
 
-default-domain = __VPN_DEFAULT_DOMAIN__
+default-domain = __OCSERV_DEFAULT_DOMAIN__
+config-per-user = /etc/ocserv/config-per-user
 
 cisco-client-compat = true
 compression = false

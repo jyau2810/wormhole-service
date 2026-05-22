@@ -28,6 +28,9 @@ class Settings:
     vpn_default_speed_profile: str
     vpn_max_concurrent_sessions: int
     vpn_gateways: tuple["Gateway", ...]
+    ca_api_url: str
+    ca_api_token: str
+    ocserv_config_per_user_dir: Path
 
 
 @dataclass(frozen=True)
@@ -90,4 +93,7 @@ def load_settings() -> Settings:
         vpn_default_speed_profile=os.getenv("VPN_DEFAULT_SPEED_PROFILE", "standard-10m"),
         vpn_max_concurrent_sessions=_as_int("VPN_MAX_CONCURRENT_SESSIONS", 1),
         vpn_gateways=_parse_gateways(),
+        ca_api_url=os.getenv("CA_API_URL", "http://ca-api:9000"),
+        ca_api_token=os.getenv("CA_API_TOKEN", ""),
+        ocserv_config_per_user_dir=Path(os.getenv("OCSERV_CONFIG_PER_USER_DIR", "/tmp/wormhole-ocserv/config-per-user")),
     )

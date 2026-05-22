@@ -1,17 +1,16 @@
 # Wormhole Access Stack
 
-这是一个面向小规模远程接入账号分发场景的 Docker 化 VPN 控制平面，当前方案以 `L2TP/IPSec PSK` 为主通道，配合 `FreeRADIUS + MariaDB + 管理后台` 提供账号管理、认证鉴权、会话审计、限速控制和异常事件观察能力。
+这是一个面向小规模远程接入账号分发场景的 Docker 化 VPN 控制平面，当前方案同时提供 `L2TP/IPSec PSK` 和 `UniConnect/OpenConnect SSL VPN` 接入，配合 `FreeRADIUS + MariaDB + 管理后台` 提供账号管理、认证鉴权、会话审计、限速控制和异常事件观察能力。
 
 当前仓库适合的场景：
 
 - 为 `macOS / Windows / iPhone / Android 12 以下` 提供原生 `L2TP/IPSec PSK` 接入
+- 为 `Android 12+` 提供 `UniConnect` 兼容的 SSL VPN 接入
 - 统一管理账号有效期、并发数和带宽档位
 - 在后台查看接入点、共享密钥、在线会话、认证日志和异常事件
-- 为后续外接 `UniConnect SSL VPN` 预留统一账号与配置导出能力
 
 不在当前仓库范围内的内容：
 
-- `UniConnect SSL VPN` 兼容网关本体
 - 大规模多地域高可用部署
 - 专门的密钥托管与企业级机密管理
 
@@ -26,6 +25,8 @@
 核心组件如下：
 
 - `ipsec-l2tp-gateway`：基于 `strongSwan + accel-ppp` 提供 `IPSec + L2TP/PPP`
+- `uniconnect-gateway`：基于 `ocserv` 提供 `OpenConnect/AnyConnect` 兼容 SSL VPN
+- `ca-api`：生成并保存内部 CA 与 SSL VPN 服务端证书
 - `freeradius`：负责鉴权、到期控制、并发控制和回复限速属性
 - `db`：基于 `MariaDB` 存储账号、限速档位、认证日志、会话与异常事件
 - `admin-portal`：负责账号管理、接入点展示、连接参数导出和运维观察
@@ -33,10 +34,11 @@
 
 关键认证模型：
 
-1. 客户端使用网关级共享密钥 `VPN_SHARED_PSK`
-2. 用户使用账号级用户名和密码
-3. 网关通过 `RADIUS_SHARED_SECRET` 与 `FreeRADIUS` 交互
-4. `FreeRADIUS` 从数据库读取 `NT-Password`、到期时间、并发限制和限速属性
+1. L2TP 客户端使用网关级共享密钥 `VPN_SHARED_PSK`
+2. UniConnect 客户端通过 SSL VPN 服务端证书建立隧道
+3. 用户使用账号级用户名和密码
+4. 网关通过 `RADIUS_SHARED_SECRET` 与 `FreeRADIUS` 交互
+5. `FreeRADIUS` 从数据库读取 `NT-Password`、`Cleartext-Password`、到期时间、并发限制和限速属性
 
 ## 部署说明
 
@@ -49,7 +51,7 @@
 - Linux 宿主机可用 `host network`
 - `/dev/net/tun` 可用
 - `/dev/ppp` 可用
-- 公网已放行 `500/udp`、`4500/udp`、`1701/udp`
+- 公网已放行 `500/udp`、`4500/udp`、`1701/udp`、`443/tcp`、`443/udp`
 - 宿主机本地 `1812/udp`、`1813/udp` 未被其他服务占用
 
 可先执行：
@@ -85,6 +87,9 @@ cp .env.example .env
 - `ADMIN_SESSION_SECRET`
 - `VPN_SHARED_PSK`
 - `VPN_GATEWAYS`
+- `CA_API_TOKEN`
+- `VPN_SERVER_HOST`
+- `OCSERV_NAT_DEVICE`
 
 常用变量分组如下：
 
@@ -115,7 +120,16 @@ cp .env.example .env
 - `VPN_NAT_DEVICE`
 - `RADIUS_SHARED_SECRET`
 
-如果宿主机外网口不是 `eth0`，同步修改 `VPN_NAT_DEVICE`。
+`UniConnect / SSL VPN`
+
+- `CA_API_TOKEN`
+- `VPN_SERVER_HOST`、`VPN_SERVER_ALT_NAMES`
+- `OCSERV_TCP_PORT`、`OCSERV_UDP_PORT`
+- `OCSERV_NETWORK`、`OCSERV_NETMASK`
+- `OCSERV_NAT_DEVICE`
+- `OCSERV_MAX_CLIENTS`、`OCSERV_MAX_SAME_CLIENTS`
+
+如果宿主机外网口不是 `eth0`，同步修改 `VPN_NAT_DEVICE` 和 `OCSERV_NAT_DEVICE`。
 
 ### 网关网络模式说明
 
@@ -138,21 +152,25 @@ docker compose --env-file .env up -d --build
 
 - `db`
 - `freeradius`
+- `ca-api`
 - `admin-portal`
 - `ipsec-l2tp-gateway`
+- `uniconnect-gateway`
 - `logrotate`
 
 ### 健康检查
 
 ```bash
 docker compose ps
-ss -lunp | grep -E ':(500|4500|1701|1812|1813)\s'
+ss -ltnup | grep -E ':(443|500|4500|1701|1812|1813)\s'
 docker compose logs --tail=50 freeradius
 docker compose logs --tail=50 ipsec-l2tp-gateway
+docker compose logs --tail=50 uniconnect-gateway
 docker compose exec ipsec-l2tp-gateway ipsec statusall
 docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
 tail -n 50 var/log/gateway/accel-ppp.log
 tail -n 50 var/log/gateway/charon.log
+tail -n 50 var/log/ocserv/ocserv.log
 docker compose logs --tail=50 admin-portal
 ```
 
@@ -201,8 +219,9 @@ http://127.0.0.1:18080
 1. 登录后台创建测试账号。
 2. 在账号详情页确认共享密钥、接入点和限速档位。
 3. 在 `macOS / Windows / iPhone / Android 12 以下` 使用原生 `L2TP/IPSec PSK` 接入。
-4. 使用后台导出的 JSON 配置校验网关列表。
-5. 连接后观察后台中的会话、流量和异常事件。
+4. 在 `Android 12+` 使用 UniConnect 连接 `openconnect-ssl` 接入点，账号密码沿用后台 VPN 账号。
+5. 使用后台导出的 JSON 配置校验网关列表。
+6. 连接后观察后台中的会话、流量和异常事件。
 
 ## 本机开发联调
 
@@ -219,6 +238,7 @@ make local-down
 
 - `db`
 - `freeradius`
+- `ca-api`
 - `admin-portal`
 - `logrotate`
 
@@ -227,6 +247,7 @@ make local-down
 - `ipsec-l2tp-gateway`
 - `PPP` 转发
 - `IPSec` 隧道
+- `UniConnect/SSL VPN` 隧道
 - `NAT` 与完整出网
 
 ## 交付内容
@@ -235,6 +256,8 @@ make local-down
 - `.env.example`：环境变量样例
 - `bootstrap/db`：数据库初始化结构
 - `images/ipsec-l2tp-gateway`：`strongSwan + accel-ppp` 网关镜像
+- `images/ocserv`：`UniConnect/OpenConnect` 兼容 SSL VPN 网关镜像
+- `images/ca-api`：内部 CA 与服务端证书 API
 - `images/freeradius`：RADIUS 鉴权与记账服务
 - `images/admin-portal`：账号、会话、流量和异常事件后台
 
@@ -246,11 +269,13 @@ make local-down
 docker compose logs -f admin-portal
 docker compose logs -f freeradius
 docker compose logs -f ipsec-l2tp-gateway
+docker compose logs -f uniconnect-gateway
 docker compose exec ipsec-l2tp-gateway ipsec statusall
 docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
-ss -lunp | grep -E ':(500|4500|1701|1812|1813)\s'
+ss -ltnup | grep -E ':(443|500|4500|1701|1812|1813)\s'
 tail -f var/log/gateway/accel-ppp.log
 tail -f var/log/gateway/charon.log
+tail -f var/log/ocserv/ocserv.log
 docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius
 ```
 

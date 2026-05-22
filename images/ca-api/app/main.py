@@ -123,3 +123,9 @@ def download_bundle(serial: str) -> Response:
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return Response(content=payload, media_type="application/zip", headers=headers)
 
+
+@app.get("/internal/certificates/ca", dependencies=[Depends(verify_token)])
+def download_ca_certificate() -> Response:
+    logger.info("ca_certificate_downloaded")
+    headers = {"Content-Disposition": 'attachment; filename="wormhole-ca-cert.pem"'}
+    return Response(content=manager.ca_certificate_bytes(), media_type="application/x-pem-file", headers=headers)

@@ -12,14 +12,16 @@
 
 ```bash
 docker compose ps
-ss -lunp | grep -E ':(500|4500|1701|1812|1813)\s'
+ss -ltnup | grep -E ':(443|500|4500|1701|1812|1813)\s'
 docker compose logs --tail=100 ipsec-l2tp-gateway
+docker compose logs --tail=100 uniconnect-gateway
 docker compose logs --tail=100 freeradius
 docker compose logs --tail=100 admin-portal
 docker compose exec ipsec-l2tp-gateway ipsec statusall
 docker compose exec ipsec-l2tp-gateway sh -c 'ip xfrm state; echo; ip xfrm policy'
 tail -n 100 var/log/gateway/accel-ppp.log
 tail -n 100 var/log/gateway/charon.log
+tail -n 100 var/log/ocserv/ocserv.log
 docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius
 ```
 
@@ -90,6 +92,41 @@ docker compose logs --tail=100 freeradius
 - 如果 `accel-ppp.log` 出现 `no IP address range defined in section [client-ip-range]` 或 `IP address is out of client-ip-range`，说明 L2TP 源地址白名单未正确生效
 - 如果 `accel-ppp.log` 出现 `unknown upstream limiter` 或 `unknown downstream limiter`，优先检查 `[shaper]` 是否把 RADIUS 属性名误写成了 limiter 方法名
 
+## UniConnect / Android 12+ 无法连接
+
+先检查：
+
+- 宿主机是否放行 `443/tcp` 和 `443/udp`
+- `/dev/net/tun` 是否可用
+- `VPN_GATEWAYS` 是否包含 `protocol=openconnect-ssl` 的公网接入点
+- `VPN_SERVER_HOST` 是否与客户端连接地址一致
+- `CA_API_TOKEN` 是否在 `admin-portal` 和 `ca-api` 中一致
+- `OCSERV_NAT_DEVICE` 是否指向 `uniconnect-gateway` 容器内实际出口网卡
+
+部署机上先执行：
+
+```bash
+ss -ltnup | grep ':443'
+docker compose logs --tail=100 ca-api
+docker compose logs --tail=100 uniconnect-gateway
+tail -n 100 var/log/ocserv/ocserv.log
+docker compose logs --tail=100 freeradius
+```
+
+再确认 RADIUS 账号同时具备 `NT-Password` 和 `Cleartext-Password`：
+
+```bash
+docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius -e \
+  "SELECT username, attribute, value FROM radcheck WHERE username='YOUR_USER';"
+```
+
+排查思路：
+
+- 如果 `uniconnect-gateway` 等待服务端证书，优先检查 `ca-api` 健康状态和 `ca-data` 卷。
+- 如果客户端提示证书不受信任，先从账号详情页下载 Wormhole CA 证书并在 Android 系统中信任。
+- 如果进入认证后被拒绝，优先检查 `Cleartext-Password`、账号到期时间和并发限制。
+- 如果连接成功但无流量，优先检查 `OCSERV_NAT_DEVICE`、`OCSERV_NETWORK` 与宿主机转发。
+
 ## 账号存在但认证被拒绝
 
 先看后台中的最近认证记录，再检查数据库中的 `radcheck`：
@@ -102,6 +139,7 @@ docker compose exec db mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" radius -e \
 确认至少存在：
 
 - `NT-Password`
+- `Cleartext-Password`
 - `Expiration`
 - `Simultaneous-Use`
 

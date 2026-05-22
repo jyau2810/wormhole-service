@@ -1,5 +1,6 @@
-authserver freeradius:1812
-acctserver freeradius:1813
+authserver __OCSERV_RADIUS_HOST__:__OCSERV_RADIUS_AUTH_PORT__
+acctserver __OCSERV_RADIUS_HOST__:__OCSERV_RADIUS_ACCT_PORT__
+nas-identifier __OCSERV_NAS_IDENTIFIER__
 servers /etc/radiusclient/servers
 dictionary /etc/radiusclient/dictionary
 radius_timeout 10

@@ -29,7 +29,10 @@
     <p>Speed profile: {{ account.speed_profile_name }} | Max concurrent sessions: {{ account.max_concurrent_sessions }}</p>
     <p>Total bytes: {{ account.total_bytes }} | Last 5m: {{ account.bytes_5m }} | Last 1h: {{ account.bytes_1h }}</p>
     <p>VPN Shared PSK: <code>{{ vpn_shared_psk }}</code></p>
-    <p><a href="/accounts/{{ account.id }}/connection-config">Export connection config (JSON)</a></p>
+    <p>
+        <a href="/accounts/{{ account.id }}/connection-config">Export connection config (JSON)</a> |
+        <a href="/ca-certificates/root">Download Wormhole CA certificate</a>
+    </p>
     <table>
         <thead>
             <tr>

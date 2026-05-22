@@ -61,6 +61,39 @@ services:
       retries: 10
       start_period: 15s
 
+  ca-api:
+    build:
+      context: ./images/ca-api
+    restart: unless-stopped
+    environment:
+      APP_TIMEZONE: ${APP_TIMEZONE}
+      LOG_LEVEL: ${LOG_LEVEL}
+      LOG_DIR_ROOT: ${LOG_DIR_ROOT}
+      INTERNAL_API_BIND_PORT: 9000
+      CA_API_TOKEN: ${CA_API_TOKEN:-change-me-ca-api-token}
+      CA_DATA_DIR: /data
+      CA_COMMON_NAME: ${CA_COMMON_NAME:-Wormhole VPN Internal CA}
+      CA_ORGANIZATION: ${CA_ORGANIZATION:-Wormhole VPN}
+      CA_VALIDITY_DAYS: ${CA_VALIDITY_DAYS:-3650}
+      SERVER_CERT_VALIDITY_DAYS: ${SERVER_CERT_VALIDITY_DAYS:-825}
+      CLIENT_CERT_VALIDITY_DAYS: ${CLIENT_CERT_VALIDITY_DAYS:-365}
+      VPN_SERVER_HOST: ${VPN_SERVER_HOST:-vpn.example.com}
+      VPN_SERVER_ALT_NAMES: ${VPN_SERVER_ALT_NAMES:-}
+      P12_EXPORT_PASSWORD: ${P12_EXPORT_PASSWORD:-}
+    volumes:
+      - ca-data:/data
+      - ./var/log:${LOG_DIR_ROOT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/healthz', timeout=3)\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
   admin-portal:
     build:
       context: ./images/admin-portal
@@ -69,6 +102,8 @@ services:
       db:
         condition: service_healthy
       freeradius:
+        condition: service_healthy
+      ca-api:
         condition: service_healthy
     environment:
       APP_TIMEZONE: ${APP_TIMEZONE}
@@ -86,10 +121,14 @@ services:
       VPN_DEFAULT_SPEED_PROFILE: ${VPN_DEFAULT_SPEED_PROFILE}
       VPN_MAX_CONCURRENT_SESSIONS: ${VPN_MAX_CONCURRENT_SESSIONS}
       VPN_GATEWAYS: ${VPN_GATEWAYS}
+      CA_API_URL: http://ca-api:9000
+      CA_API_TOKEN: ${CA_API_TOKEN:-change-me-ca-api-token}
+      OCSERV_CONFIG_PER_USER_DIR: /etc/ocserv/config-per-user
     ports:
       - "127.0.0.1:${ADMIN_PORTAL_PORT}:8000"
     volumes:
       - ./var/log:${LOG_DIR_ROOT}
+      - ocserv-user-config:/etc/ocserv/config-per-user
     healthcheck:
       test:
         [
@@ -146,6 +185,55 @@ services:
       retries: 10
       start_period: 15s
 
+  uniconnect-gateway:
+    build:
+      context: ./images/ocserv
+    restart: unless-stopped
+    depends_on:
+      freeradius:
+        condition: service_healthy
+      ca-api:
+        condition: service_healthy
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      APP_TIMEZONE: ${APP_TIMEZONE}
+      LOG_DIR_ROOT: ${LOG_DIR_ROOT}
+      RADIUS_SHARED_SECRET: ${RADIUS_SHARED_SECRET}
+      OCSERV_TCP_PORT: ${OCSERV_TCP_PORT:-443}
+      OCSERV_UDP_PORT: ${OCSERV_UDP_PORT:-443}
+      OCSERV_NETWORK: ${OCSERV_NETWORK:-10.89.0.0}
+      OCSERV_NETMASK: ${OCSERV_NETMASK:-255.255.255.0}
+      OCSERV_MAX_CLIENTS: ${OCSERV_MAX_CLIENTS:-64}
+      OCSERV_MAX_SAME_CLIENTS: ${OCSERV_MAX_SAME_CLIENTS:-2}
+      OCSERV_DNS_1: ${OCSERV_DNS_1:-1.1.1.1}
+      OCSERV_DNS_2: ${OCSERV_DNS_2:-8.8.8.8}
+      OCSERV_IDLE_TIMEOUT: ${OCSERV_IDLE_TIMEOUT:-1200}
+      OCSERV_MOBILE_IDLE_TIMEOUT: ${OCSERV_MOBILE_IDLE_TIMEOUT:-1800}
+      OCSERV_SESSION_TIMEOUT: ${OCSERV_SESSION_TIMEOUT:-86400}
+      OCSERV_STATS_REPORT_TIME: ${OCSERV_STATS_REPORT_TIME:-60}
+      OCSERV_DEFAULT_DOMAIN: ${OCSERV_DEFAULT_DOMAIN:-}
+      OCSERV_NAT_DEVICE: ${OCSERV_NAT_DEVICE:-eth0}
+      OCSERV_RADIUS_HOST: freeradius
+      OCSERV_RADIUS_AUTH_PORT: ${VPN_RADIUS_AUTH_PORT}
+      OCSERV_RADIUS_ACCT_PORT: ${VPN_RADIUS_ACCT_PORT}
+      OCSERV_NAS_IDENTIFIER: ${OCSERV_NAS_IDENTIFIER:-wormhole-uniconnect}
+    ports:
+      - "${OCSERV_TCP_PORT:-443}:${OCSERV_TCP_PORT:-443}/tcp"
+      - "${OCSERV_UDP_PORT:-443}:${OCSERV_UDP_PORT:-443}/udp"
+    volumes:
+      - ca-data:/srv/pki:ro
+      - ocserv-user-config:/etc/ocserv/config-per-user:ro
+      - ./var/log:${LOG_DIR_ROOT}
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -x ocserv >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
   logrotate:
     build:
       context: ./images/logrotate
@@ -158,3 +246,5 @@ services:
 
 volumes:
   db-data:
+  ca-data:
+  ocserv-user-config:

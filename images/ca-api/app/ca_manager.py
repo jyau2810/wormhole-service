@@ -331,3 +331,6 @@ class CAManager:
             raise KeyError(serial)
         bundle_path = self.clients_dir / serial / item["bundle_filename"]
         return item["bundle_filename"], bundle_path.read_bytes()
+
+    def ca_certificate_bytes(self) -> bytes:
+        return self.ca_cert_path.read_bytes()
