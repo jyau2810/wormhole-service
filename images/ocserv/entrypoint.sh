@@ -48,7 +48,7 @@ sed -i "s/__RADIUS_SHARED_SECRET__/${RADIUS_SHARED_SECRET}/g" /etc/radiusclient/
 sed -i "s/__OCSERV_RADIUS_HOST__/${OCSERV_RADIUS_HOST}/g" /etc/radiusclient/radiusclient.conf
 sed -i "s/__OCSERV_RADIUS_AUTH_PORT__/${OCSERV_RADIUS_AUTH_PORT}/g" /etc/radiusclient/radiusclient.conf
 sed -i "s/__OCSERV_RADIUS_ACCT_PORT__/${OCSERV_RADIUS_ACCT_PORT}/g" /etc/radiusclient/radiusclient.conf
-sed -i "s/__OCSERV_NAS_IDENTIFIER__/${OCSERV_NAS_IDENTIFIER}/g" /etc/radiusclient/radiusclient.conf
+sed -i "s/__OCSERV_NAS_IDENTIFIER__/${OCSERV_NAS_IDENTIFIER}/g" /etc/ocserv/ocserv.conf
 sed -i "s/__OCSERV_TCP_PORT__/${OCSERV_TCP_PORT}/g" /etc/ocserv/ocserv.conf
 sed -i "s/__OCSERV_UDP_PORT__/${OCSERV_UDP_PORT}/g" /etc/ocserv/ocserv.conf
 sed -i "s/__OCSERV_NETWORK__/${OCSERV_NETWORK}/g" /etc/ocserv/ocserv.conf

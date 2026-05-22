@@ -6,6 +6,7 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "images" / "admin-portal"))
 
 from app.connection_config import build_connection_config  # noqa: E402
@@ -85,6 +86,13 @@ class UniConnectSupportTests(unittest.TestCase):
             with self.subTest(username=username):
                 with self.assertRaises(ValueError):
                     validate_ocserv_username(username)
+
+    def test_ocserv_nas_identifier_is_not_written_to_radiusclient_config(self) -> None:
+        ocserv_template = (REPO_ROOT / "images" / "ocserv" / "ocserv.conf.template").read_text(encoding="utf-8")
+        radiusclient_template = (REPO_ROOT / "images" / "ocserv" / "radiusclient.conf.template").read_text(encoding="utf-8")
+
+        self.assertIn("nas-identifier=__OCSERV_NAS_IDENTIFIER__", ocserv_template)
+        self.assertNotIn("nas-identifier __OCSERV_NAS_IDENTIFIER__", radiusclient_template)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
-auth = "radius[config=/etc/radiusclient/radiusclient.conf,groupconfig=false]"
-acct = "radius[config=/etc/radiusclient/radiusclient.conf]"
+auth = "radius[config=/etc/radiusclient/radiusclient.conf,groupconfig=false,nas-identifier=__OCSERV_NAS_IDENTIFIER__]"
+acct = "radius[config=/etc/radiusclient/radiusclient.conf,nas-identifier=__OCSERV_NAS_IDENTIFIER__]"
 
 tcp-port = __OCSERV_TCP_PORT__
 udp-port = __OCSERV_UDP_PORT__
