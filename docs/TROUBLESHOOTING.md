@@ -102,6 +102,7 @@ docker compose logs --tail=100 freeradius
 - `VPN_SERVER_HOST` 是否与客户端连接地址一致
 - `CA_API_TOKEN` 是否在 `admin-portal` 和 `ca-api` 中一致
 - `OCSERV_NAT_DEVICE` 是否指向 `uniconnect-gateway` 容器内实际出口网卡
+- AnyConnect/UniConnect 客户端是否收到 `user-profile`，其 `HostAddress` 来源于 `VPN_SERVER_HOST`
 
 部署机上先执行：
 

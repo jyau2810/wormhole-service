@@ -41,6 +41,7 @@ require_file /srv/pki/server/server-cert.pem
 require_file /srv/pki/server/server-key.pem
 
 cp /opt/wormhole/ocserv.conf.template /etc/ocserv/ocserv.conf
+cp /opt/wormhole/profile.xml.template /etc/ocserv/profile.xml
 cp /opt/wormhole/radiusclient.conf.template /etc/radiusclient/radiusclient.conf
 cp /opt/wormhole/servers.template /etc/radiusclient/servers
 
@@ -62,6 +63,8 @@ sed -i "s/__OCSERV_MOBILE_IDLE_TIMEOUT__/${OCSERV_MOBILE_IDLE_TIMEOUT}/g" /etc/o
 sed -i "s/__OCSERV_SESSION_TIMEOUT__/${OCSERV_SESSION_TIMEOUT}/g" /etc/ocserv/ocserv.conf
 sed -i "s/__OCSERV_STATS_REPORT_TIME__/${OCSERV_STATS_REPORT_TIME}/g" /etc/ocserv/ocserv.conf
 sed -i "s/__OCSERV_DEFAULT_DOMAIN__/${OCSERV_DEFAULT_DOMAIN}/g" /etc/ocserv/ocserv.conf
+sed -i "s|__OCSERV_PROFILE_HOST__|${OCSERV_PROFILE_HOST}|g" /etc/ocserv/profile.xml
+sed -i "s|__OCSERV_PROFILE_NAME__|${OCSERV_PROFILE_NAME}|g" /etc/ocserv/profile.xml
 
 if [ -z "${OCSERV_DEFAULT_DOMAIN}" ]; then
     sed -i '/^default-domain = /d' /etc/ocserv/ocserv.conf

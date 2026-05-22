@@ -107,6 +107,20 @@ class UniConnectSupportTests(unittest.TestCase):
         self.assertIn("pgrep -x ocserv-sm >/dev/null", compose)
         self.assertNotIn('test: ["CMD-SHELL", "pgrep -x ocserv >/dev/null"]', compose)
 
+    def test_ocserv_anyconnect_profile_is_enabled_and_rendered(self) -> None:
+        ocserv_template = (REPO_ROOT / "images" / "ocserv" / "ocserv.conf.template").read_text(encoding="utf-8")
+        dockerfile = (REPO_ROOT / "images" / "ocserv" / "Dockerfile").read_text(encoding="utf-8")
+        entrypoint = (REPO_ROOT / "images" / "ocserv" / "entrypoint.sh").read_text(encoding="utf-8")
+        profile_template = (REPO_ROOT / "images" / "ocserv" / "profile.xml.template").read_text(encoding="utf-8")
+        compose = (REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+
+        self.assertIn("user-profile = /etc/ocserv/profile.xml", ocserv_template)
+        self.assertIn("COPY profile.xml.template /opt/wormhole/profile.xml.template", dockerfile)
+        self.assertIn("cp /opt/wormhole/profile.xml.template /etc/ocserv/profile.xml", entrypoint)
+        self.assertIn("__OCSERV_PROFILE_HOST__", entrypoint)
+        self.assertIn("<HostAddress>__OCSERV_PROFILE_HOST__</HostAddress>", profile_template)
+        self.assertIn("OCSERV_PROFILE_HOST: ${VPN_SERVER_HOST:-vpn.example.com}", compose)
+
 
 if __name__ == "__main__":
     unittest.main()

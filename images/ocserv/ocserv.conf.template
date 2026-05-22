@@ -38,6 +38,7 @@ route = default
 
 default-domain = __OCSERV_DEFAULT_DOMAIN__
 config-per-user = /etc/ocserv/config-per-user
+user-profile = /etc/ocserv/profile.xml
 
 cisco-client-compat = true
 compression = false

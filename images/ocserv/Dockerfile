@@ -56,6 +56,7 @@ RUN build_deps="\
     && rm -rf /usr/src/ocserv
 
 COPY ocserv.conf.template /opt/wormhole/ocserv.conf.template
+COPY profile.xml.template /opt/wormhole/profile.xml.template
 COPY radiusclient.conf.template /opt/wormhole/radiusclient.conf.template
 COPY servers.template /opt/wormhole/servers.template
 COPY supervisord.conf /opt/wormhole/supervisord.conf

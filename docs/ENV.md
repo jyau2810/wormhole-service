@@ -406,6 +406,11 @@ cp .env.example .env
 - 默认值：`wormhole-uniconnect`
 - 用途：UniConnect/SSL VPN 侧写入 RADIUS 记录的 NAS 标识。
 
+### `OCSERV_PROFILE_NAME`
+
+- 默认值：`Wormhole UniConnect`
+- 用途：写入 AnyConnect 兼容客户端配置文件的显示名称；`HostAddress` 自动使用 `VPN_SERVER_HOST`。
+
 ## 推荐最小修改集
 
 ```dotenv
