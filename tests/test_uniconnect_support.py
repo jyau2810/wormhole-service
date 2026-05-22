@@ -94,6 +94,19 @@ class UniConnectSupportTests(unittest.TestCase):
         self.assertIn("nas-identifier=__OCSERV_NAS_IDENTIFIER__", ocserv_template)
         self.assertNotIn("nas-identifier __OCSERV_NAS_IDENTIFIER__", radiusclient_template)
 
+    def test_ocserv_image_keeps_lz4_runtime_dependency(self) -> None:
+        dockerfile = (REPO_ROOT / "images" / "ocserv" / "Dockerfile").read_text(encoding="utf-8")
+
+        self.assertIn("lz4-dev", dockerfile)
+        self.assertIn("lz4-libs", dockerfile)
+
+    def test_uniconnect_healthcheck_uses_actual_ocserv_process_names(self) -> None:
+        compose = (REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+
+        self.assertIn("pgrep -x ocserv-main >/dev/null", compose)
+        self.assertIn("pgrep -x ocserv-sm >/dev/null", compose)
+        self.assertNotIn('test: ["CMD-SHELL", "pgrep -x ocserv >/dev/null"]', compose)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -38,6 +38,7 @@ RUN build_deps="\
         libnl3 \
         libseccomp \
         linux-pam \
+        lz4-libs \
         oath-toolkit-liboath \
         pwgen \
         supervisor" \

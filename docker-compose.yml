@@ -228,7 +228,7 @@ services:
       - ocserv-user-config:/etc/ocserv/config-per-user:ro
       - ./var/log:${LOG_DIR_ROOT}
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -x ocserv >/dev/null"]
+      test: ["CMD-SHELL", "pgrep -x ocserv-main >/dev/null && pgrep -x ocserv-sm >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 10
