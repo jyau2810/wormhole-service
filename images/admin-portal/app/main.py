@@ -19,6 +19,7 @@ from .ca_client import CAClient
 from .connection_config import build_connection_config
 from .db import transaction, wait_for_db
 from .logging_setup import configure_logging, request_id_var
+from .macos_installer import build_macos_installer_archive
 from .ocserv_policy import sync_ocserv_user_policy, validate_ocserv_username
 from .radius_sync import radius_check_rows, to_utc_naive_end_of_day
 from .schema import ensure_admin_schema
@@ -751,6 +752,46 @@ def connection_config(request: Request, account_id: int):
         gateways=settings.vpn_gateways,
         vpn_shared_psk=settings.vpn_shared_psk,
         ca_certificate_url=str(request.url_for("download_ca_certificate")),
+    )
+
+
+@app.get("/accounts/{account_id}/macos-installer")
+def download_macos_installer(request: Request, account_id: int):
+    redirect = require_login(request)
+    if redirect:
+        return redirect
+    with transaction(settings) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT username, password_plaintext
+                FROM vpn_accounts
+                WHERE id = %s
+                """,
+                (account_id,),
+            )
+            account = cursor.fetchone()
+    if not account:
+        return JSONResponse(status_code=404, content={"detail": "account not found"})
+    try:
+        filename, payload = build_macos_installer_archive(
+            username=account["username"],
+            password=account["password_plaintext"],
+            vpn_shared_psk=settings.vpn_shared_psk,
+            gateways=settings.vpn_gateways,
+        )
+    except ValueError as exc:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+    logger.info("macos_installer_downloaded account_id=%s username=%s", account_id, account["username"])
+    return Response(
+        content=payload,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store, max-age=0",
+            "Pragma": "no-cache",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 

@@ -31,8 +31,10 @@
     <p>VPN Shared PSK: <code>{{ vpn_shared_psk }}</code></p>
     <p>
         <a href="/accounts/{{ account.id }}/connection-config">Export connection config (JSON)</a> |
+        <a href="/accounts/{{ account.id }}/macos-installer">Download macOS installer (.zip)</a> |
         <a href="/ca-certificates/root">Download Wormhole CA certificate</a>
     </p>
+    <p>The macOS installer contains this account's password and VPN shared secret. Delete it after installation.</p>
     <table>
         <thead>
             <tr>
