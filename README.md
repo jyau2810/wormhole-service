@@ -221,12 +221,15 @@ http://127.0.0.1:18080
 2. 在账号详情页确认共享密钥、接入点和限速档位。
 3. `macOS` 可从账号详情页下载 `.mobileconfig`；打开后在系统描述文件界面确认安装，账号密码、共享密钥和所有 L2TP 接入点会自动预填。
 4. `Windows 10/11` 可从账号详情页下载 `.bat` 安装器；双击后会创建所有 L2TP 接入点，并用预设账号密码完成优先接入点的首次连接。
-5. 在 `iPhone / Android 12 以下` 使用原生 `L2TP/IPSec PSK` 接入。
-6. 在 `Android 12+` 使用 UniConnect 连接 `openconnect-ssl` 接入点，账号密码沿用后台 VPN 账号。
-7. 使用后台导出的 JSON 配置校验网关列表。
-8. 连接后观察后台中的会话、流量和异常事件。
+5. `iPhone / iPad` 可使用 Safari 下载专用 `.mobileconfig`；进入“设置 -> 已下载描述文件”确认安装后，所有 L2TP 接入点和凭据会自动预填。
+6. 在 `Android 12 以下` 使用原生 `L2TP/IPSec PSK` 接入。
+7. 在 `Android 12+` 使用 UniConnect 连接 `openconnect-ssl` 接入点，账号密码沿用后台 VPN 账号。
+8. 使用后台导出的 JSON 配置校验网关列表。
+9. 连接后观察后台中的会话、流量和异常事件。
 
 macOS 描述文件包含账号明文密码和 `VPN_SHARED_PSK`，只应通过受信任渠道分发，并在安装完成后删除。系统提示“描述文件已下载”时尚未安装，macOS 11 用户需要继续进入“系统偏好设置 -> 描述文件”确认安装。
+
+iOS 描述文件同样包含账号明文密码和 `VPN_SHARED_PSK`。未接入 MDM 时，iPhone 和 iPad 必须由用户在系统设置中确认安装；未签名描述文件还会显示来源警告。
 
 Windows 安装器同样包含可还原的账号明文密码和 `VPN_SHARED_PSK`，只应通过受信任渠道分发并在运行后删除。脚本会覆盖同名的 `Wormhole VPN` 配置，使用 `MS-CHAP v2` 和全局路由，并通过 `rasdial` 完成首次连接以保存凭据。
 

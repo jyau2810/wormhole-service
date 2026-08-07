@@ -18,6 +18,7 @@ from .analytics import refresh_account_events
 from .ca_client import CAClient
 from .connection_config import build_connection_config
 from .db import transaction, wait_for_db
+from .ios_installer import build_ios_mobileconfig, ios_profile_filename
 from .logging_setup import configure_logging, request_id_var
 from .macos_installer import build_macos_mobileconfig, macos_profile_filename
 from .ocserv_policy import sync_ocserv_user_policy, validate_ocserv_username
@@ -101,9 +102,10 @@ PLATFORM_GUIDES = {
     "iphone": {
         "title": "iPhone",
         "steps": [
-            "在设置中进入 VPN 与设备管理，添加 VPN 配置。",
-            "类型选择 L2TP，填写服务器地址、账号、密码和共享密钥。",
-            "开启发送所有流量后保存并连接。",
+            "使用 Safari 从账号详情页下载 iOS VPN Profile (.mobileconfig)。",
+            "打开设置，点击已下载描述文件；如果入口未显示，进入通用中的 VPN 与设备管理。",
+            "选择 Wormhole VPN，点击安装并按系统提示确认。",
+            "安装完成后，VPN 页面会出现已预填服务器、账号密码、共享密钥和全流量设置的 L2TP 连接。",
         ],
     },
     "android": {
@@ -786,6 +788,47 @@ def download_macos_profile(request: Request, account_id: int):
         return JSONResponse(status_code=409, content={"detail": str(exc)})
     filename = macos_profile_filename(account["username"])
     logger.info("macos_profile_downloaded account_id=%s username=%s", account_id, account["username"])
+    return Response(
+        content=payload,
+        media_type="application/x-apple-aspen-config",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store, max-age=0",
+            "Pragma": "no-cache",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@app.get("/accounts/{account_id}/ios-profile")
+def download_ios_profile(request: Request, account_id: int):
+    redirect = require_login(request)
+    if redirect:
+        return redirect
+    with transaction(settings) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT username, password_plaintext
+                FROM vpn_accounts
+                WHERE id = %s
+                """,
+                (account_id,),
+            )
+            account = cursor.fetchone()
+    if not account:
+        return JSONResponse(status_code=404, content={"detail": "account not found"})
+    try:
+        payload = build_ios_mobileconfig(
+            username=account["username"],
+            password=account["password_plaintext"],
+            vpn_shared_psk=settings.vpn_shared_psk,
+            gateways=settings.vpn_gateways,
+        )
+    except ValueError as exc:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+    filename = ios_profile_filename(account["username"])
+    logger.info("ios_profile_downloaded account_id=%s username=%s", account_id, account["username"])
     return Response(
         content=payload,
         media_type="application/x-apple-aspen-config",

@@ -32,11 +32,13 @@
     <p>
         <a href="/accounts/{{ account.id }}/connection-config">Export connection config (JSON)</a> |
         <a href="/accounts/{{ account.id }}/macos-profile">Download macOS VPN Profile (.mobileconfig)</a> |
+        <a href="/accounts/{{ account.id }}/ios-profile">Download iOS VPN Profile (.mobileconfig)</a> |
         <a href="/accounts/{{ account.id }}/windows-installer">Download Windows VPN Installer (.bat)</a> |
         <a href="/ca-certificates/root">Download Wormhole CA certificate</a>
     </p>
     <p>On macOS 11, "Profile Downloaded" means it is waiting in System Preferences &gt; Profiles. Select Wormhole VPN and click Install.</p>
     <p>The profile contains this account's password and VPN shared secret. Delete it after installation.</p>
+    <p>On iPhone or iPad, open Settings &gt; Profile Downloaded after downloading the iOS profile in Safari, then confirm installation.</p>
     <p>The Windows installer creates all L2TP connections and connects the primary gateway once to save the credentials. Delete it after installation.</p>
     <table>
         <thead>

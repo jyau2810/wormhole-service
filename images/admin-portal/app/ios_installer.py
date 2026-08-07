@@ -6,7 +6,7 @@ from .apple_mobileconfig import build_apple_mobileconfig, safe_filename_part
 from .settings import Gateway
 
 
-def build_macos_mobileconfig(
+def build_ios_mobileconfig(
     username: str,
     password: str,
     vpn_shared_psk: str,
@@ -17,10 +17,10 @@ def build_macos_mobileconfig(
         password=password,
         vpn_shared_psk=vpn_shared_psk,
         gateways=gateways,
-        platform_key="macos",
-        payload_scope="User",
+        platform_key="ios",
+        payload_scope=None,
     )
 
 
-def macos_profile_filename(username: str) -> str:
-    return f"wormhole-{safe_filename_part(username)}.mobileconfig"
+def ios_profile_filename(username: str) -> str:
+    return f"wormhole-{safe_filename_part(username)}-ios.mobileconfig"
