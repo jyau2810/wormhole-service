@@ -25,6 +25,7 @@ from .radius_sync import radius_check_rows, to_utc_naive_end_of_day
 from .schema import ensure_admin_schema
 from .security import hash_admin_password, verify_admin_password
 from .settings import Settings, load_settings
+from .windows_installer import build_windows_installer, windows_installer_filename
 
 settings: Settings = load_settings()
 configure_logging(settings)
@@ -91,10 +92,10 @@ PLATFORM_GUIDES = {
     "windows": {
         "title": "Windows",
         "steps": [
-            "进入设置中的 VPN 页面，新增 L2TP/IPSec VPN。",
-            "服务器地址与账号密码使用后台连接配置页展示的参数。",
-            "高级设置里填写预共享密钥，并把安全协议调整为允许 MS-CHAP v2。",
-            "如果系统提示 IPSec 受限，需要按企业标准镜像启用 L2TP/IPSec 支持后重启。",
+            "从账号详情页下载 Windows VPN Installer (.bat)，然后双击运行。",
+            "脚本会创建 L2TP/IPSec VPN、写入预共享密钥，并使用该账号完成首次连接。",
+            "看到安装和首次连接完成的提示后，可以从 Windows 的 VPN 页面正常断开或重新连接。",
+            "安装文件包含账号密码和预共享密钥，完成后请立即删除。",
         ],
     },
     "iphone": {
@@ -788,6 +789,47 @@ def download_macos_profile(request: Request, account_id: int):
     return Response(
         content=payload,
         media_type="application/x-apple-aspen-config",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store, max-age=0",
+            "Pragma": "no-cache",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@app.get("/accounts/{account_id}/windows-installer")
+def download_windows_installer(request: Request, account_id: int):
+    redirect = require_login(request)
+    if redirect:
+        return redirect
+    with transaction(settings) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT username, password_plaintext
+                FROM vpn_accounts
+                WHERE id = %s
+                """,
+                (account_id,),
+            )
+            account = cursor.fetchone()
+    if not account:
+        return JSONResponse(status_code=404, content={"detail": "account not found"})
+    try:
+        payload = build_windows_installer(
+            username=account["username"],
+            password=account["password_plaintext"],
+            vpn_shared_psk=settings.vpn_shared_psk,
+            gateways=settings.vpn_gateways,
+        )
+    except ValueError as exc:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+    filename = windows_installer_filename(account["username"])
+    logger.info("windows_installer_downloaded account_id=%s username=%s", account_id, account["username"])
+    return Response(
+        content=payload,
+        media_type="application/octet-stream",
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
             "Cache-Control": "no-store, max-age=0",
