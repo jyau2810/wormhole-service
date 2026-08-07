@@ -19,7 +19,7 @@ from .ca_client import CAClient
 from .connection_config import build_connection_config
 from .db import transaction, wait_for_db
 from .logging_setup import configure_logging, request_id_var
-from .macos_installer import build_macos_installer_archive
+from .macos_installer import build_macos_mobileconfig, macos_profile_filename
 from .ocserv_policy import sync_ocserv_user_policy, validate_ocserv_username
 from .radius_sync import radius_check_rows, to_utc_naive_end_of_day
 from .schema import ensure_admin_schema
@@ -82,10 +82,10 @@ PLATFORM_GUIDES = {
     "macos": {
         "title": "macOS",
         "steps": [
-            "打开系统设置，进入网络，新增 VPN 配置，类型选择 L2TP over IPSec。",
-            "服务器地址使用下方接入点列表中的地址，账号和密码使用本系统中的 VPN 账号。",
-            "共享密钥使用后台展示的 VPN Shared PSK。",
-            "在高级选项中勾选通过 VPN 发送所有流量，然后保存并连接。",
+            "从账号详情页下载 macOS VPN Profile，并打开 .mobileconfig 文件。",
+            "macOS 11 会先提示描述文件已下载；进入系统偏好设置的描述文件页面，选择 Wormhole VPN 并确认安装。",
+            "安装完成后，系统网络设置中会出现已预填服务器、账号密码和共享密钥的 L2TP VPN。",
+            "如果需要更新账号密码，重新下载并安装同一账号的描述文件。",
         ],
     },
     "windows": {
@@ -755,8 +755,9 @@ def connection_config(request: Request, account_id: int):
     )
 
 
-@app.get("/accounts/{account_id}/macos-installer")
-def download_macos_installer(request: Request, account_id: int):
+@app.get("/accounts/{account_id}/macos-installer", include_in_schema=False)
+@app.get("/accounts/{account_id}/macos-profile")
+def download_macos_profile(request: Request, account_id: int):
     redirect = require_login(request)
     if redirect:
         return redirect
@@ -774,7 +775,7 @@ def download_macos_installer(request: Request, account_id: int):
     if not account:
         return JSONResponse(status_code=404, content={"detail": "account not found"})
     try:
-        filename, payload = build_macos_installer_archive(
+        payload = build_macos_mobileconfig(
             username=account["username"],
             password=account["password_plaintext"],
             vpn_shared_psk=settings.vpn_shared_psk,
@@ -782,10 +783,11 @@ def download_macos_installer(request: Request, account_id: int):
         )
     except ValueError as exc:
         return JSONResponse(status_code=409, content={"detail": str(exc)})
-    logger.info("macos_installer_downloaded account_id=%s username=%s", account_id, account["username"])
+    filename = macos_profile_filename(account["username"])
+    logger.info("macos_profile_downloaded account_id=%s username=%s", account_id, account["username"])
     return Response(
         content=payload,
-        media_type="application/zip",
+        media_type="application/x-apple-aspen-config",
         headers={
             "Content-Disposition": f'attachment; filename="{filename}"',
             "Cache-Control": "no-store, max-age=0",

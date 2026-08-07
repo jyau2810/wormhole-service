@@ -1,12 +1,7 @@
 from __future__ import annotations
 
-import base64
-import io
 import plistlib
 import re
-import stat
-import textwrap
-import zipfile
 from collections.abc import Iterable
 from uuid import NAMESPACE_URL, uuid5
 
@@ -84,63 +79,5 @@ def build_macos_mobileconfig(
     return plistlib.dumps(profile, fmt=plistlib.FMT_XML, sort_keys=False)
 
 
-def build_macos_command(
-    username: str,
-    password: str,
-    vpn_shared_psk: str,
-    gateways: Iterable[Gateway],
-) -> tuple[str, str]:
-    mobileconfig = build_macos_mobileconfig(username, password, vpn_shared_psk, gateways)
-    encoded_profile = "\n".join(textwrap.wrap(base64.b64encode(mobileconfig).decode("ascii"), width=76))
-    safe_username = _safe_filename_part(username)
-    command_filename = f"wormhole-{safe_username}-macos.command"
-    mobileconfig_filename = f"wormhole-{safe_username}.mobileconfig"
-    script = f"""#!/bin/bash
-set -euo pipefail
-umask 077
-
-if [[ "$(/usr/bin/uname -s)" != "Darwin" ]]; then
-    echo "This installer requires macOS."
-    exit 1
-fi
-
-temp_root="${{TMPDIR:-/tmp}}"
-profile_dir="$(/usr/bin/mktemp -d "${{temp_root%/}}/wormhole-vpn.XXXXXX")"
-profile_path="${{profile_dir}}/{mobileconfig_filename}"
-
-cleanup() {{
-    /bin/rm -rf "$profile_dir"
-}}
-trap cleanup EXIT HUP INT TERM
-
-/usr/bin/base64 -D > "$profile_path" <<'WORMHOLE_PROFILE'
-{encoded_profile}
-WORMHOLE_PROFILE
-
-/usr/bin/open "$profile_path"
-echo
-echo "The Wormhole VPN profile has opened in System Preferences."
-echo "Install the downloaded profile, then return to this window."
-read -r -p "Press Return after installation to remove the temporary profile file... " _
-"""
-    return command_filename, script
-
-
-def build_macos_installer_archive(
-    username: str,
-    password: str,
-    vpn_shared_psk: str,
-    gateways: Iterable[Gateway],
-) -> tuple[str, bytes]:
-    command_filename, script = build_macos_command(username, password, vpn_shared_psk, gateways)
-    archive_filename = f"wormhole-{_safe_filename_part(username)}-macos-installer.zip"
-    payload = io.BytesIO()
-
-    with zipfile.ZipFile(payload, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        command_info = zipfile.ZipInfo(command_filename)
-        command_info.create_system = 3
-        command_info.external_attr = (stat.S_IFREG | 0o755) << 16
-        command_info.compress_type = zipfile.ZIP_DEFLATED
-        archive.writestr(command_info, script.encode("utf-8"))
-
-    return archive_filename, payload.getvalue()
+def macos_profile_filename(username: str) -> str:
+    return f"wormhole-{_safe_filename_part(username)}.mobileconfig"

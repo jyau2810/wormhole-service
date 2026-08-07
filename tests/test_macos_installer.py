@@ -1,18 +1,13 @@
 from __future__ import annotations
 
-import base64
-import io
 import plistlib
-import re
-import stat
 import sys
 import unittest
-import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "images" / "admin-portal"))
 
-from app.macos_installer import build_macos_installer_archive, build_macos_mobileconfig  # noqa: E402
+from app.macos_installer import build_macos_mobileconfig, macos_profile_filename  # noqa: E402
 from app.settings import Gateway  # noqa: E402
 
 
@@ -57,33 +52,9 @@ class MacOSInstallerTests(unittest.TestCase):
                 gateways=(Gateway("android", "vpn.example.com", "openconnect-ssl", 443, 1),),
             )
 
-    def test_archive_contains_executable_command_without_literal_secrets(self) -> None:
-        archive_filename, archive_payload = build_macos_installer_archive(
-            username="alice",
-            password="Secret<&123",
-            vpn_shared_psk="shared<&secret",
-            gateways=self.gateways,
-        )
-
-        self.assertEqual(archive_filename, "wormhole-alice-macos-installer.zip")
-        with zipfile.ZipFile(io.BytesIO(archive_payload)) as archive:
-            self.assertEqual(archive.namelist(), ["wormhole-alice-macos.command"])
-            info = archive.getinfo("wormhole-alice-macos.command")
-            self.assertEqual(stat.S_IMODE(info.external_attr >> 16), 0o755)
-            script = archive.read(info).decode("utf-8")
-
-        self.assertTrue(script.startswith("#!/bin/bash\n"))
-        self.assertNotIn("Secret<&123", script)
-        self.assertNotIn("shared<&secret", script)
-        encoded = re.search(
-            r"<<'WORMHOLE_PROFILE'\n(?P<payload>.*?)\nWORMHOLE_PROFILE",
-            script,
-            flags=re.DOTALL,
-        )
-        self.assertIsNotNone(encoded)
-        decoded = base64.b64decode(encoded.group("payload"))
-        profile = plistlib.loads(decoded)
-        self.assertEqual(profile["PayloadContent"][0]["PPP"]["AuthPassword"], "Secret<&123")
+    def test_profile_filename_is_safe_for_content_disposition(self) -> None:
+        self.assertEqual(macos_profile_filename("alice"), "wormhole-alice.mobileconfig")
+        self.assertEqual(macos_profile_filename("../alice bob"), "wormhole-alice-bob.mobileconfig")
 
 
 if __name__ == "__main__":
